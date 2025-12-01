@@ -21,6 +21,7 @@ bun run src/index.ts ask -t <tech> -q "<question>"
 ```
 
 Example:
+
 ```sh
 bun run src/index.ts ask -t effect -q "How does Effect.tap work?"
 ```
@@ -34,6 +35,7 @@ bun run src/index.ts serve -p <port>
 ```
 
 Example:
+
 ```sh
 bun run src/index.ts serve -p 8080
 ```
@@ -47,8 +49,9 @@ curl -X POST http://localhost:8080/question \
 ```
 
 Response:
+
 ```json
-{"answer": "..."}
+{ "answer": "..." }
 ```
 
 ### Help

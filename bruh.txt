@@ -1,0 +1,3767 @@
+[00:06:24.053] INFO (#26): Loading config from /Users/davis/.config/btca/btca.json...
+[00:06:24.058] INFO (#28): Pulling latest changes for svelte...
+[00:06:24.066] INFO (#29): Wrote docs agent prompt at /Users/davis/.config/btca/prompts/btca-svelte-agent.md
+Already up to date.
+[00:06:24.298] INFO (#28): Done with svelte
+[00:06:24.679] INFO (#17): OPENCODE SERVER IS UP AT http://127.0.0.1:3420
+[00:06:24.855] INFO (#17): PROMPTING WITH: function prompt() {
+    [native code]
+}
+how does the inspect rune work in svelte?II'll searchI'll search for information about the inspectI'll search for information about the inspect rune in Svelte forI'll search for information about the inspect rune in Svelte for you.I'll search for information about the inspect rune in Svelte for you.
+[Tool Done] bash: Search for inspect usage in codebase
+TheThe inspect rune doesnThe inspect rune doesn't appear to be useThe inspect rune doesn't appear to be used in thisThe inspect rune doesn't appear to be used in this codebase. Let me provideThe inspect rune doesn't appear to be used in this codebase. Let me provide you with generalThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about howThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspectThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in SvelteThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune isThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is aThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debuggingThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utilityThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logsThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs valuesThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. HereThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### BasicThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<scriptThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  letThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let countThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<buttonThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+EveryThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` willThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browserThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### KeyThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive loggingThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: ItThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automaticallyThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs wheneverThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever theThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the trackeThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked valuesThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **MultipleThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple valuesThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: YouThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspectThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple valuesThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, messageThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message,The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, userThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **LabeleThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled outputThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: YouThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can labelThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspecteThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **ReturnThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the valueThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value youThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you passThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it,The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, soThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inlineThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   letThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubleThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(countThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **ConditionalThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspectionThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can useThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it withThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelteThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.withThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depthThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 }The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **DevThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**:The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: InThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In productionThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production buildsThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typicallyThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically strippeThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped outThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out orThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or noThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops,The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, soThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesnThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common UseThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use CasesThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changesThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- TrackingThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computeThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- UnderstandingThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependenciesThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- DevelopmentThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only loggingThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+IsThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of theThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more aboutThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more about,The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more about, or areThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more about, or are you looking toThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more about, or are you looking to implementThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more about, or are you looking to implement it in your projectThe inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more about, or are you looking to implement it in your project?The inspect rune doesn't appear to be used in this codebase. Let me provide you with general information about how the `$inspect` rune works in Svelte 5:
+
+## How `$inspect` Works in Svelte
+
+The `$inspect` rune is a debugging utility in Svelte 5 that logs values reactively. Here's how it works:
+
+### Basic Usage
+```svelte
+<script>
+  let count = 0;
+  
+  $inspect(count);
+</script>
+
+<button on:click={() => count++}>
+  Increment
+</button>
+```
+
+Every time `count` changes, `$inspect(count)` will log the value to the browser console.
+
+### Key Features
+
+1. **Reactive logging**: It automatically logs whenever the tracked values change
+2. **Multiple values**: You can inspect multiple values at once:
+   ```svelte
+   $inspect(count, message, user);
+   ```
+
+3. **Labeled output**: You can label inspected values:
+   ```svelte
+   $inspect({ count, message });
+   ```
+
+4. **Return value**: `$inspect()` returns the value you pass to it, so you can use it inline:
+   ```svelte
+   let doubled = $inspect(count * 2);
+   ```
+
+5. **Conditional inspection**: You can use it with conditions:
+   ```svelte
+   $inspect.with({ depth: 2 })(complexObject);
+   ```
+
+6. **Dev-only**: In production builds, `$inspect` is typically stripped out or no-ops, so it doesn't impact performance.
+
+### Common Use Cases
+- Debugging reactive state changes
+- Tracking computed values
+- Understanding reactive dependencies
+- Development-only logging
+
+Is there a specific aspect of the `$inspect` rune you'd like to know more about, or are you looking to implement it in your project?CLOSING OPENCODE SESSION
+
+

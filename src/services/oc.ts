@@ -1,4 +1,4 @@
-import { createOpencode, type Event } from "@opencode-ai/sdk";
+import { createOpencode, OpencodeClient, type Event } from "@opencode-ai/sdk";
 import { Deferred, Effect, Stream } from "effect";
 import { ConfigService } from "./config.ts";
 import { OcError } from "../lib/errors.ts";
@@ -7,28 +7,53 @@ export type { Event as OcEvent };
 
 const ocService = Effect.gen(function* () {
   const config = yield* ConfigService;
-  const configObject = yield* config.getOpenCodeConfig();
 
-  const { client, server } = yield* Effect.tryPromise({
-    try: () =>
-      createOpencode({
-        port: 3420,
-        config: configObject,
-      }),
-    catch: (err) =>
-      new OcError({ message: "FAILED TO CREATE OPENCODE CLIENT", cause: err }),
-  });
-
-  yield* Effect.addFinalizer(() =>
-    Effect.sync(() => {
-      console.log("CLOSING OPENCODE SERVER");
-      server.close();
-    })
-  );
-
-  const streamSessionEvents = (args: { sessionID: string }) =>
+  const getOpencodeInstance = ({ tech }: { tech: string }) =>
     Effect.gen(function* () {
-      const { sessionID } = args;
+      let portOffset = 0;
+      const maxInstances = 5;
+      const configObject = yield* config.getOpenCodeConfig({ repoName: tech });
+      while (portOffset < maxInstances) {
+        const result = yield* Effect.tryPromise(() =>
+          createOpencode({
+            port: 3420 + portOffset,
+            config: configObject,
+          })
+        ).pipe(
+          Effect.catchAll((err) => {
+            if (
+              err.cause instanceof Error &&
+              err.cause.stack?.includes("port")
+            ) {
+              portOffset++;
+              return Effect.succeed(null);
+            }
+            return Effect.fail(
+              new OcError({
+                message: "FAILED TO CREATE OPENCODE CLIENT",
+                cause: err,
+              })
+            );
+          })
+        );
+        if (result !== null) {
+          return result;
+        }
+      }
+      return yield* Effect.fail(
+        new OcError({
+          message: "FAILED TO CREATE OPENCODE CLIENT - all ports exhausted",
+          cause: null,
+        })
+      );
+    });
+
+  const streamSessionEvents = (args: {
+    sessionID: string;
+    client: OpencodeClient;
+  }) =>
+    Effect.gen(function* () {
+      const { sessionID, client } = args;
 
       const events = yield* Effect.tryPromise({
         try: () => client.event.subscribe(),
@@ -60,9 +85,10 @@ const ocService = Effect.gen(function* () {
     sessionID: string;
     text: string;
     errorDeferred: Deferred.Deferred<never, OcError>;
+    client: OpencodeClient;
   }) =>
     Effect.promise(() =>
-      client.session.prompt({
+      args.client.session.prompt({
         path: { id: args.sessionID },
         body: {
           agent: "docs",
@@ -82,17 +108,25 @@ const ocService = Effect.gen(function* () {
       )
     );
 
-  const streamPrompt = (args: { sessionID: string; prompt: string }) =>
+  const streamPrompt = (args: {
+    sessionID: string;
+    prompt: string;
+    client: OpencodeClient;
+    cleanup: () => void;
+  }) =>
     Effect.gen(function* () {
-      const { sessionID, prompt } = args;
+      const { sessionID, prompt, client } = args;
 
-      const eventStream = yield* streamSessionEvents({ sessionID });
+      const eventStream = yield* streamSessionEvents({ sessionID, client });
 
       const errorDeferred = yield* Deferred.make<never, OcError>();
 
-      yield* firePrompt({ sessionID, text: prompt, errorDeferred }).pipe(
-        Effect.forkDaemon
-      );
+      yield* firePrompt({
+        sessionID,
+        text: prompt,
+        errorDeferred,
+        client,
+      }).pipe(Effect.forkDaemon);
 
       // Transform stream to fail on session.error, race with prompt error
       return eventStream.pipe(
@@ -110,6 +144,7 @@ const ocService = Effect.gen(function* () {
             return event;
           })
         ),
+        Stream.ensuring(Effect.sync(() => args.cleanup())),
         Stream.interruptWhen(Deferred.await(errorDeferred))
       );
     });
@@ -119,9 +154,19 @@ const ocService = Effect.gen(function* () {
       Effect.gen(function* () {
         const { question, tech } = args;
 
-        const repo = yield* config.cloneOrUpdateOneRepoLocally(tech);
+        yield* Effect.all(
+          [
+            config.cloneOrUpdateOneRepoLocally(tech),
+            config.loadDocsAgentPrompt({ repoName: tech }),
+          ],
+          {
+            concurrency: 2,
+          }
+        );
 
-        yield* config.loadDocsAgentPrompt({ repos: [repo] });
+        const { client, server } = yield* getOpencodeInstance({ tech });
+
+        yield* Effect.log(`OPENCODE SERVER IS UP AT ${server.url}`);
 
         const session = yield* Effect.promise(() => client.session.create());
 
@@ -137,12 +182,20 @@ const ocService = Effect.gen(function* () {
         const sessionID = session.data.id;
         yield* Effect.log(`PROMPTING WITH: ${prompt}`);
 
-        return yield* streamPrompt({ sessionID, prompt: question });
+        return yield* streamPrompt({
+          sessionID,
+          prompt: question,
+          client,
+          cleanup: () => {
+            console.log("CLOSING OPENCODE SESSION");
+            server.close();
+          },
+        });
       }),
   };
 });
 
 export class OcService extends Effect.Service<OcService>()("OcService", {
-  scoped: ocService,
+  effect: ocService,
   dependencies: [ConfigService.Default],
 }) {}
