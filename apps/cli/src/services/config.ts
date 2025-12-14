@@ -280,6 +280,15 @@ const configService = Effect.gen(function* () {
 				yield* writeConfig(config);
 				return repo;
 			}),
+		removeRepo: (repoName: string) =>
+			Effect.gen(function* () {
+				const existing = config.repos.find((r) => r.name === repoName);
+				if (!existing) {
+					return yield* Effect.fail(new ConfigError({ message: `Repo "${repoName}" not found` }));
+				}
+				config = { ...config, repos: config.repos.filter((r) => r.name !== repoName) };
+				yield* writeConfig(config);
+			}),
 		getReposDirectory: () => Effect.succeed(config.reposDirectory)
 	};
 });

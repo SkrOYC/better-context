@@ -50,6 +50,11 @@
 			example: 'btca config repos add -n react -u https://github.com/facebook/react -b main'
 		},
 		{
+			name: 'btca config repos remove',
+			description: 'Remove a repository from the configuration.',
+			example: 'btca config repos remove -n react'
+		},
+		{
 			name: 'btca config repos clear',
 			description: 'Delete all locally downloaded repositories to free up disk space.',
 			example: 'btca config repos clear'

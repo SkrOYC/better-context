@@ -1,5 +1,11 @@
 import { Command, Options } from '@effect/cli';
-import { FileSystem, HttpRouter, HttpServer, HttpServerRequest, HttpServerResponse } from '@effect/platform';
+import {
+	FileSystem,
+	HttpRouter,
+	HttpServer,
+	HttpServerRequest,
+	HttpServerResponse
+} from '@effect/platform';
 import { BunHttpServer } from '@effect/platform-bun';
 import { Effect, Layer, Schema, Stream } from 'effect';
 import * as readline from 'readline';
@@ -225,8 +231,8 @@ const repoNotesOption = Options.text('notes').pipe(Options.optional);
 const configReposAddCommand = Command.make(
 	'add',
 	{
-		name: repoNameOption,
-		url: repoUrlOption,
+		name: repoNameOption.pipe(Options.optional),
+		url: repoUrlOption.pipe(Options.optional),
 		branch: repoBranchOption,
 		notes: repoNotesOption
 	},
@@ -234,16 +240,40 @@ const configReposAddCommand = Command.make(
 		Effect.gen(function* () {
 			const config = yield* ConfigService;
 
+			let repoName: string;
+			if (name._tag === 'Some') {
+				repoName = name.value;
+			} else {
+				repoName = yield* askText('Enter repo name: ');
+			}
+
+			if (!repoName) {
+				console.log('No repo name provided.');
+				return;
+			}
+
+			let repoUrl: string;
+			if (url._tag === 'Some') {
+				repoUrl = url.value;
+			} else {
+				repoUrl = yield* askText('Enter repo URL: ');
+			}
+
+			if (!repoUrl) {
+				console.log('No repo URL provided.');
+				return;
+			}
+
 			const repo = {
-				name,
-				url,
+				name: repoName,
+				url: repoUrl,
 				branch,
 				...(notes._tag === 'Some' ? { specialNotes: notes.value } : {})
 			};
 
 			yield* config.addRepo(repo);
-			console.log(`Added repo "${name}":`);
-			console.log(`  URL: ${url}`);
+			console.log(`Added repo "${repoName}":`);
+			console.log(`  URL: ${repoUrl}`);
 			console.log(`  Branch: ${branch}`);
 			if (notes._tag === 'Some') {
 				console.log(`  Notes: ${notes.value}`);
@@ -273,6 +303,68 @@ const askConfirmation = (question: string): Effect.Effect<boolean> =>
 			resume(Effect.succeed(normalized === 'y' || normalized === 'yes'));
 		});
 	});
+
+const askText = (question: string): Effect.Effect<string> =>
+	Effect.async<string>((resume) => {
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout
+		});
+
+		rl.question(question, (answer) => {
+			rl.close();
+			resume(Effect.succeed(answer.trim()));
+		});
+	});
+
+const configReposRemoveCommand = Command.make(
+	'remove',
+	{ name: repoNameOption.pipe(Options.optional) },
+	({ name }) =>
+		Effect.gen(function* () {
+			const config = yield* ConfigService;
+
+			let repoName: string;
+			if (name._tag === 'Some') {
+				repoName = name.value;
+			} else {
+				repoName = yield* askText('Enter repo name to remove: ');
+			}
+
+			if (!repoName) {
+				console.log('No repo name provided.');
+				return;
+			}
+
+			// Check if repo exists
+			const repos = yield* config.getRepos();
+			const exists = repos.find((r) => r.name === repoName);
+			if (!exists) {
+				console.error(`Error: Repo "${repoName}" not found.`);
+				process.exit(1);
+			}
+
+			const confirmed = yield* askConfirmation(
+				`Are you sure you want to remove repo "${repoName}" from config? (y/N): `
+			);
+
+			if (!confirmed) {
+				console.log('Aborted.');
+				return;
+			}
+
+			yield* config.removeRepo(repoName);
+			console.log(`Removed repo "${repoName}".`);
+		}).pipe(
+			Effect.catchTag('ConfigError', (e) =>
+				Effect.sync(() => {
+					console.error(`Error: ${e.message}`);
+					process.exit(1);
+				})
+			),
+			Effect.provide(programLayer)
+		)
+);
 
 const configReposClearCommand = Command.make('clear', {}, () =>
 	Effect.gen(function* () {
@@ -311,7 +403,9 @@ const configReposClearCommand = Command.make('clear', {}, () =>
 		}
 		console.log();
 
-		const confirmed = yield* askConfirmation('Are you sure you want to delete these repos? (y/N): ');
+		const confirmed = yield* askConfirmation(
+			'Are you sure you want to delete these repos? (y/N): '
+		);
 
 		if (!confirmed) {
 			console.log('Aborted.');
@@ -335,9 +429,17 @@ const configReposCommand = Command.make('repos', {}, () =>
 		console.log('Commands:');
 		console.log('  list    List all configured repos');
 		console.log('  add     Add a new repo');
+		console.log('  remove  Remove a configured repo');
 		console.log('  clear   Clear all downloaded repos');
 	})
-).pipe(Command.withSubcommands([configReposListCommand, configReposAddCommand, configReposClearCommand]));
+).pipe(
+	Command.withSubcommands([
+		configReposListCommand,
+		configReposAddCommand,
+		configReposRemoveCommand,
+		configReposClearCommand
+	])
+);
 
 // config - parent command
 const configCommand = Command.make('config', {}, () =>
