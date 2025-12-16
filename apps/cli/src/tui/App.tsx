@@ -4,6 +4,7 @@ import { colors } from './theme.ts';
 import { filterCommands } from './commands.ts';
 import { services } from './services.ts';
 import { copyToClipboard } from './clipboard.ts';
+import type { OcEvent } from '../services/oc.ts';
 import type { Mode, Message, Repo, Command } from './types.ts';
 import type { WizardStep } from './components/AddRepoWizard.tsx';
 import type { ModelConfigStep } from './components/ModelConfig.tsx';
@@ -50,6 +51,9 @@ export function App() {
 	// Loading state for ask command
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadingText, setLoadingText] = useState('');
+
+	// Chat session state
+	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
 	// Load initial data
 	useEffect(() => {
@@ -105,7 +109,7 @@ export function App() {
 			setModelValues({ provider: modelConfig.provider, model: modelConfig.model });
 			setModelInput(modelConfig.provider);
 		} else if (command.mode === 'chat') {
-			// Spawn OpenCode chat
+			// Start internal chat session
 			if (repos.length === 0) {
 				setMessages((prev) => [
 					...prev,
@@ -122,11 +126,12 @@ export function App() {
 			]);
 
 			try {
-				await services.spawnTui(repoName);
-				// After OpenCode exits, we're back in the TUI
+				const sessionId = await services.initSession(repoName);
+				setCurrentSessionId(sessionId);
+				setMode('chat');
 				setMessages((prev) => [
 					...prev,
-					{ role: 'system', content: 'Chat session ended. Welcome back!' }
+					{ role: 'system', content: 'Chat session started. Type your messages.' }
 				]);
 			} catch (error) {
 				setMessages((prev) => [...prev, { role: 'system', content: `Error: ${error}` }]);
@@ -149,6 +154,42 @@ export function App() {
 		}
 	};
 
+	const handleStreamedResponse = async (action: (onEvent: (event: OcEvent) => void) => Promise<void>) => {
+		setIsLoading(true);
+		setMode('loading');
+		setLoadingText('');
+
+		let fullResponse = '';
+
+		try {
+			await action((event) => {
+				if (
+					event.type === 'message.part.updated' &&
+					'part' in event.properties &&
+					event.properties.part?.type === 'text'
+				) {
+					const delta = (event.properties as { delta?: string }).delta ?? '';
+					fullResponse += delta;
+					setLoadingText(fullResponse);
+				}
+			});
+
+			await copyToClipboard(fullResponse);
+
+			setMessages((prev) => [
+				...prev,
+				{ role: 'assistant', content: fullResponse },
+				{ role: 'system', content: 'Answer copied to clipboard!' }
+			]);
+		} catch (error) {
+			setMessages((prev) => [...prev, { role: 'system', content: `Error: ${error}` }]);
+		} finally {
+			setIsLoading(false);
+			setMode('chat');
+			setLoadingText('');
+		}
+	};
+
 	const handleChatSubmit = async () => {
 		const value = inputValue.trim();
 		if (!value) return;
@@ -165,54 +206,27 @@ export function App() {
 		// If loading, ignore input
 		if (isLoading) return;
 
-		// Check if this is a question (after /ask was used)
-		// Or if user just types a regular message, treat it as a question
-		const repoName = repos[selectedRepo]?.name;
-		if (!repoName) {
-			setMessages((prev) => [
-				...prev,
-				{ role: 'system', content: 'No repo selected. Use /add to add a repo first.' }
-			]);
+		// Check if in chat session
+		if (currentSessionId) {
+			// Send prompt to existing session
+			setMessages((prev) => [...prev, { role: 'user', content: value }]);
 			setInputValue('');
-			return;
-		}
+			await handleStreamedResponse((onEvent) => services.sendPrompt(currentSessionId, value, onEvent));
+		} else {
+			// Treat as one-off question
+			const repoName = repos[selectedRepo]?.name;
+			if (!repoName) {
+				setMessages((prev) => [
+					...prev,
+					{ role: 'system', content: 'No repo selected. Use /add to add a repo first.' }
+				]);
+				setInputValue('');
+				return;
+			}
 
-		// Treat any non-command input as a question
-		setMessages((prev) => [...prev, { role: 'user', content: value }]);
-		setInputValue('');
-		setIsLoading(true);
-		setMode('loading');
-		setLoadingText('');
-
-		let fullResponse = '';
-
-		try {
-			await services.askQuestion(repoName, value, (event) => {
-				if (
-					event.type === 'message.part.updated' &&
-					'part' in event.properties &&
-					event.properties.part?.type === 'text'
-				) {
-					const delta = (event.properties as { delta?: string }).delta ?? '';
-					fullResponse += delta;
-					setLoadingText(fullResponse);
-				}
-			});
-
-			// Copy to clipboard
-			await copyToClipboard(fullResponse);
-
-			setMessages((prev) => [
-				...prev,
-				{ role: 'assistant', content: fullResponse },
-				{ role: 'system', content: 'Answer copied to clipboard!' }
-			]);
-		} catch (error) {
-			setMessages((prev) => [...prev, { role: 'system', content: `Error: ${error}` }]);
-		} finally {
-			setIsLoading(false);
-			setMode('chat');
-			setLoadingText('');
+			setMessages((prev) => [...prev, { role: 'user', content: value }]);
+			setInputValue('');
+			await handleStreamedResponse((onEvent) => services.askQuestion(repoName, value, onEvent));
 		}
 	};
 
@@ -336,7 +350,16 @@ export function App() {
 		}
 	};
 
-	const cancelMode = () => {
+	const cancelMode = async () => {
+		if (currentSessionId) {
+			try {
+				await services.closeSession(currentSessionId);
+			} catch (error) {
+				console.error('Error closing session:', error);
+			}
+			setCurrentSessionId(null);
+			setMessages((prev) => [...prev, { role: 'system', content: 'Chat session ended.' }]);
+		}
 		setMode('chat');
 		setInputValue('');
 		setWizardInput('');

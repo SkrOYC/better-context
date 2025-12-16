@@ -5,7 +5,7 @@ import {
 	type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
 import { spawn } from 'bun';
-import { Deferred, Duration, Effect, Stream } from 'effect';
+import { Deferred, Duration, Effect, Ref, Stream } from 'effect';
 import { ConfigService } from './config.ts';
 import { OcError } from '../lib/errors.ts';
 import { validateProviderAndModel } from '../lib/utils/validation.ts';
@@ -33,6 +33,8 @@ const ocService = Effect.gen(function* () {
 	const config = yield* ConfigService;
 
 	const rawConfig = yield* config.rawConfig();
+
+	const sessionsRef = yield* Ref.make(new Map<string, { client: OpencodeClient; server: { close: () => void; url: string } }>());
 
 	const getOpencodeInstance = ({ tech }: { tech: string }) =>
 		Effect.gen(function* () {
@@ -180,6 +182,60 @@ const ocService = Effect.gen(function* () {
 					try: () => spawnOpencodeTui({ config: configObject, rawConfig }),
 					catch: (err) => new OcError({ message: 'TUI exited with error', cause: err })
 				});
+			}),
+		initSession: (tech: string) =>
+			Effect.gen(function* () {
+				const { client, server } = yield* getOpencodeInstance({ tech });
+
+				const session = yield* Effect.promise(() => client.session.create());
+
+				if (session.error) {
+					return yield* Effect.fail(
+						new OcError({
+							message: 'FAILED TO START OPENCODE SESSION',
+							cause: session.error
+						})
+					);
+				}
+
+				const sessionID = session.data.id;
+
+				yield* Ref.update(sessionsRef, (map) => map.set(sessionID, { client, server }));
+
+				return sessionID;
+			}),
+		sendPrompt: (sessionId: string, text: string) =>
+			Effect.gen(function* () {
+				const sessions = yield* Ref.get(sessionsRef);
+				const sessionData = sessions.get(sessionId);
+				if (!sessionData) {
+					return yield* Effect.fail(
+						new OcError({
+							message: 'Session not found',
+							cause: null
+						})
+					);
+				}
+				const { client } = sessionData;
+
+				return yield* streamPrompt({
+					sessionID: sessionId,
+					prompt: text,
+					client,
+					cleanup: () => {} // Session persists, no cleanup
+				});
+			}),
+		closeSession: (sessionId: string) =>
+			Effect.gen(function* () {
+				const sessions = yield* Ref.get(sessionsRef);
+				const sessionData = sessions.get(sessionId);
+				if (sessionData) {
+					sessionData.server.close();
+					yield* Ref.update(sessionsRef, (map) => {
+						map.delete(sessionId);
+						return map;
+					});
+				}
 			}),
 		holdOpenInstanceInBg: () =>
 			Effect.gen(function* () {
