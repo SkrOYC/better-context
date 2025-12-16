@@ -1,5 +1,6 @@
 import * as readline from 'readline';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { Command } from 'commander';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
@@ -397,6 +398,7 @@ export class CliService {
   private program: Command;
   private oc: OcService;
   private config: ConfigService;
+  private isInitialized = false;
 
   constructor(oc: OcService, config: ConfigService) {
     this.oc = oc;
@@ -404,7 +406,12 @@ export class CliService {
     this.program = new Command();
 
     this.setupProgram();
-    this.setupCommands();
+  }
+
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+    await this.setupCommands();
+    this.isInitialized = true;
   }
 
   private setupProgram(): void {
@@ -429,20 +436,22 @@ For more detailed help, use: btca <command> --help`)
       });
   }
 
-  private setupCommands(): void {
+  private async setupCommands(): Promise<void> {
+    const repos = await this.config.getRepos();
+    const availableTechnologies = repos.map(repo => repo.name).sort().join(', ');
     // Ask command
     this.program
       .command('ask')
       .description('Ask questions about technologies using AI')
       .requiredOption('-q, --question <question>', 'question to ask about the technology')
-      .requiredOption('-t, --tech <technology>', 'technology to ask about (e.g., react, typescript, node)')
+      .requiredOption('-t, --tech <technology>', 'technology to ask about')
       .addHelpText('after', `
 EXAMPLES:
   $ btca ask --question "How do I create a React component?" --tech react
   $ btca ask -q "What are TypeScript interfaces?" -t typescript
   $ btca ask --question "How to set up Express middleware?" --tech express
 
-Available technologies: svelte, tailwindcss, opentui, runed`)
+Available technologies: ${availableTechnologies}`)
       .action(async (options) => {
         await this.handleAskCommand(options.question, options.tech);
       });
@@ -495,8 +504,8 @@ EXAMPLES:
     reposCommand
       .command('add')
       .description('Add a new repository to the configuration')
-      .option('-n, --name <name>', 'repository name (used as identifier)')
-      .option('-u, --url <url>', 'repository URL')
+      .requiredOption('-n, --name <name>', 'repository name (used as identifier)')
+      .requiredOption('-u, --url <url>', 'repository URL')
       .option('-b, --branch <branch>', 'branch to use', 'main')
       .option('--notes <notes>', 'special notes about this repository')
       .addHelpText('after', `
@@ -511,7 +520,7 @@ EXAMPLES:
     reposCommand
       .command('remove')
       .description('Remove a repository from the configuration')
-      .option('-n, --name <name>', 'repository name to remove')
+      .requiredOption('-n, --name <name>', 'repository name to remove')
       .addHelpText('after', `
 EXAMPLES:
   $ btca config repos remove --name react
@@ -613,42 +622,18 @@ EXAMPLE:
     }
   }
 
-  private async handleConfigReposAddCommand(name?: string, url?: string, branch?: string, notes?: string): Promise<void> {
-    let repoName: string;
-    if (name) {
-      repoName = name;
-    } else {
-      repoName = await askText('Enter repo name: ');
-    }
-
-    if (!repoName) {
-      console.log('No repo name provided.');
-      return;
-    }
-
-    let repoUrl: string;
-    if (url) {
-      repoUrl = url;
-    } else {
-      repoUrl = await askText('Enter repo URL: ');
-    }
-
-    if (!repoUrl) {
-      console.log('No repo URL provided.');
-      return;
-    }
-
+  private async handleConfigReposAddCommand(name: string, url: string, branch: string, notes?: string): Promise<void> {
     const repo = {
-      name: repoName,
-      url: repoUrl,
-      branch: branch || 'main',
+      name,
+      url,
+      branch,
       ...(notes ? { specialNotes: notes } : {})
     };
 
     try {
       await this.config.addRepo(repo);
-      console.log(`Added repo "${repoName}":`);
-      console.log(`  URL: ${repoUrl}`);
+      console.log(`Added repo "${name}":`);
+      console.log(`  URL: ${url}`);
       console.log(`  Branch: ${repo.branch}`);
       if (notes) {
         console.log(`  Notes: ${notes}`);
@@ -659,27 +644,15 @@ EXAMPLE:
     }
   }
 
-  private async handleConfigReposRemoveCommand(name?: string): Promise<void> {
-    let repoName: string;
-    if (name) {
-      repoName = name;
-    } else {
-      repoName = await askText('Enter repo name to remove: ');
-    }
-
-    if (!repoName) {
-      console.log('No repo name provided.');
-      return;
-    }
-
+  private async handleConfigReposRemoveCommand(name: string): Promise<void> {
     const repos = await this.config.getRepos();
-    const exists = repos.find((r) => r.name === repoName);
+    const exists = repos.find((r) => r.name === name);
     if (!exists) {
-      console.error(`Error: Repo "${repoName}" not found.`);
+      console.error(`Error: Repo "${name}" not found.`);
       process.exit(1);
     }
 
-    const confirmed = await askConfirmation(`Are you sure you want to remove repo "${repoName}" from config? (y/N): `);
+    const confirmed = await askConfirmation(`Are you sure you want to remove repo "${name}" from config? (y/N): `);
 
     if (!confirmed) {
       console.log('Aborted.');
@@ -687,8 +660,8 @@ EXAMPLE:
     }
 
     try {
-      await this.config.removeRepo(repoName);
-      console.log(`Removed repo "${repoName}".`);
+      await this.config.removeRepo(name);
+      console.log(`Removed repo "${name}".`);
     } catch (e: any) {
       console.error(`Error: ${e.message}`);
       process.exit(1);
@@ -711,7 +684,7 @@ EXAMPLE:
     const repoPaths: string[] = [];
 
     for (const entry of entries) {
-      const fullPath = `${reposDir}/${entry}`;
+      const fullPath = path.join(reposDir, entry);
       const stat = await fs.stat(fullPath);
       if (stat.isDirectory()) {
         repoPaths.push(fullPath);
@@ -745,8 +718,7 @@ EXAMPLE:
   }
 
   async run(args: string[]): Promise<void> {
-    // Commander.js expects the full argv array, so we reconstruct it
-    const fullArgs = ['node', 'btca', ...args];
-    await this.program.parseAsync(fullArgs);
+    await this.initialize();
+    await this.program.parseAsync(args, { from: 'user' });
   }
 }
