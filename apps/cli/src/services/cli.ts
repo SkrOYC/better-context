@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
+import { InvalidTechError } from '../lib/errors.ts';
 import { directoryExists } from '../lib/utils/files.ts';
 
 declare const __VERSION__: string;
@@ -83,7 +84,10 @@ const handleAskCommand = async (args: string[], oc: OcService): Promise<void> =>
 
     console.log('\n');
   } catch (e: any) {
-    if (e.name === 'InvalidProviderError') {
+    if (e.name === 'InvalidTechError') {
+      console.error(`Error: ${e.message}`);
+      process.exit(1);
+    } else if (e.name === 'InvalidProviderError') {
       console.error(`Error: Unknown provider "${e.providerId}"`);
       console.error(`Available providers: ${e.availableProviders.join(', ')}`);
       process.exit(1);
@@ -96,8 +100,9 @@ const handleAskCommand = async (args: string[], oc: OcService): Promise<void> =>
       console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
       console.error(`Run "opencode auth" to configure provider credentials.`);
       process.exit(1);
+    } else {
+      throw e;
     }
-    throw e;
   }
 };
 
@@ -575,7 +580,10 @@ EXAMPLES:
 
       console.log('\n');
     } catch (e: any) {
-      if (e.name === 'InvalidProviderError') {
+      if (e.name === 'InvalidTechError') {
+        console.error(`Error: ${e.message}`);
+        process.exit(1);
+      } else if (e.name === 'InvalidProviderError') {
         console.error(`Error: Unknown provider "${e.providerId}"`);
         console.error(`Available providers: ${e.availableProviders.join(', ')}`);
         process.exit(1);
@@ -588,8 +596,10 @@ EXAMPLES:
         console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
         console.error(`Run "opencode auth" to configure provider credentials.`);
         process.exit(1);
+      } else {
+        // For any other errors, we throw to let the top-level error handler manage them
+        throw e;
       }
-      throw e;
     }
   }
 

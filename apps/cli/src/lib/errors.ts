@@ -49,3 +49,23 @@ export class ProviderNotConnectedError extends Error {
     super(`Provider not connected: ${providerId}`);
   }
 }
+
+export class InvalidTechError extends Error {
+  readonly _tag = "InvalidTechError";
+  override readonly name = "InvalidTechError";
+  constructor(
+    readonly techName: string,
+    readonly availableTechs: string[],
+    readonly suggestedTechs: string[] = []
+  ) {
+    let message = `Technology "${techName}" not found.`;
+    
+    if (suggestedTechs.length > 0) {
+      message += ` Did you mean: ${suggestedTechs.join(', ')}?`;
+    } else {
+      message += ` Available technologies: ${availableTechs.join(', ')}.`;
+    }
+    
+    super(message);
+  }
+}
