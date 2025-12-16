@@ -4,6 +4,22 @@ import fs from 'node:fs';
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node';
 
+// Set git config with default author information to prevent MissingNameError
+const setGitConfig = async (repoDir: string) => {
+	await git.setConfig({
+		fs,
+		dir: repoDir,
+		path: 'user.name',
+		value: 'btca'
+	});
+	await git.setConfig({
+		fs,
+		dir: repoDir,
+		path: 'user.email',
+		value: 'btca@localhost'
+	});
+};
+
 export const cloneRepo = (args: {
 	repoDir: string;
 	url: string;
@@ -21,10 +37,12 @@ export const cloneRepo = (args: {
 				ref: branch,
 				depth: 1,
 				singleBranch: true,
-				onProgress: quiet ? undefined : (progress) => {
-					console.log(`${progress.phase}: ${progress.loaded}/${progress.total}`);
-				}
+				// Suppress all progress output to keep CLI clean
+				onProgress: undefined,
+				onMessage: undefined
 			});
+			// Set git config after cloning to avoid author issues during future pull operations
+			await setGitConfig(repoDir);
 		},
 		catch: (error) => new ConfigError({ message: 'Failed to clone repo', cause: error })
 	});
@@ -33,14 +51,16 @@ export const pullRepo = (args: { repoDir: string; branch: string; quiet?: boolea
 	Effect.tryPromise({
 		try: async () => {
 			const { repoDir, branch, quiet } = args;
+			// Set git config before pulling to avoid author issues
+			await setGitConfig(repoDir);
 			await git.pull({
 				fs,
 				http,
 				dir: repoDir,
 				ref: branch,
-				onProgress: quiet ? undefined : (progress) => {
-					console.log(`${progress.phase}: ${progress.loaded}/${progress.total}`);
-				}
+				// Suppress all progress output to keep CLI clean
+				onProgress: undefined,
+				onMessage: undefined
 			});
 		},
 		catch: (error) => new ConfigError({ message: 'Failed to pull repo', cause: error })
