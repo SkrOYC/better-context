@@ -60,7 +60,7 @@ const handleAskCommand = async (args: string[], oc: OcService): Promise<void> =>
   }
 
   try {
-    const eventStream = await oc.askQuestion({ tech, question, suppressLogs: false });
+    const eventStream = await oc.askQuestion({ tech, question });
 
     let currentMessageId: string | null = null;
 
@@ -552,7 +552,7 @@ EXAMPLES:
 
   private async handleAskCommand(question: string, tech: string): Promise<void> {
     try {
-      const eventStream = await this.oc.askQuestion({ tech, question, suppressLogs: false });
+      const eventStream = await this.oc.askQuestion({ tech, question });
 
       let currentMessageId: string | null = null;
 
