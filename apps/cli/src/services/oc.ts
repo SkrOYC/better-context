@@ -18,7 +18,7 @@ export class OcService {
     this.configService = configService;
   }
 
-  async initSession(tech: string): Promise<string> {
+  private async getOpencodeInstance(tech: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
     let portOffset = 0;
     const maxInstances = 5;
     const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
@@ -36,19 +36,7 @@ export class OcService {
           port: 3420 + portOffset,
           config: configObject
         });
-        const session = await result.client.session.create();
-
-        if (session.error) {
-          throw new OcError({
-            message: 'FAILED TO START OPENCODE SESSION',
-            cause: session.error
-          });
-        }
-
-        const sessionID = session.data.id;
-        this.sessions.set(sessionID, { client: result.client, server: result.server });
-
-        return sessionID;
+        return result;
       } catch (err) {
         if (err instanceof Error && err.message.includes('port')) {
           portOffset++;
@@ -66,6 +54,23 @@ export class OcService {
     });
   }
 
+  async initSession(tech: string): Promise<string> {
+    const result = await this.getOpencodeInstance(tech);
+    const session = await result.client.session.create();
+
+    if (session.error) {
+      throw new OcError({
+        message: 'FAILED TO START OPENCODE SESSION',
+        cause: session.error
+      });
+    }
+
+    const sessionID = session.data.id;
+    this.sessions.set(sessionID, { client: result.client, server: result.server });
+
+    return sessionID;
+  }
+
   async sendPrompt(sessionId: string, text: string): Promise<AsyncIterable<Event>> {
     const sessionData = this.sessions.get(sessionId);
     if (!sessionData) {
@@ -77,11 +82,26 @@ export class OcService {
     const { client } = sessionData;
 
     const events = await client.event.subscribe();
+    let promptError: Error | null = null;
+
     const filteredEvents = {
       async *[Symbol.asyncIterator]() {
+        if (promptError) {
+          throw promptError;
+        }
         for await (const event of events.stream) {
+          if (promptError) {
+            throw promptError;
+          }
           const props = event.properties;
           if (!('sessionID' in props) || props.sessionID === sessionId) {
+            if (event.type === 'session.error') {
+              const props = event.properties as { error?: { name?: string } };
+              throw new OcError({
+                message: props.error?.name ?? 'Unknown session error',
+                cause: props.error
+              });
+            }
             yield event;
           }
         }
@@ -100,7 +120,7 @@ export class OcService {
         parts: [{ type: 'text', text }]
       }
     }).catch((err) => {
-      // Handle error
+      promptError = new OcError({ message: String(err), cause: err });
     });
 
     return filteredEvents;
@@ -119,86 +139,66 @@ export class OcService {
 
     await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs });
 
-    let portOffset = 0;
-    const maxInstances = 5;
-    const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
+    const result = await this.getOpencodeInstance(tech);
 
-    if (!configObject) {
+    await validateProviderAndModel(result.client, this.configService.rawConfig().provider, this.configService.rawConfig().model);
+
+    const session = await result.client.session.create();
+
+    if (session.error) {
       throw new OcError({
-        message: 'Config not found for tech',
-        cause: null
+        message: 'FAILED TO START OPENCODE SESSION',
+        cause: session.error
       });
     }
 
-    while (portOffset < maxInstances) {
-      try {
-        const result = await createOpencode({
-          port: 3420 + portOffset,
-          config: configObject
-        });
+    const sessionID = session.data.id;
 
-        await validateProviderAndModel(result.client, this.configService.rawConfig().provider, this.configService.rawConfig().model);
+    const events = await result.client.event.subscribe();
+    let promptError: Error | null = null;
 
-        const session = await result.client.session.create();
-
-        if (session.error) {
-          throw new OcError({
-            message: 'FAILED TO START OPENCODE SESSION',
-            cause: session.error
-          });
+    const filteredEvents = {
+      async *[Symbol.asyncIterator]() {
+        if (promptError) {
+          throw promptError;
         }
-
-        const sessionID = session.data.id;
-
-        const events = await result.client.event.subscribe();
-        const filteredEvents = {
-          async *[Symbol.asyncIterator]() {
-            for await (const event of events.stream) {
-              if (event.type === 'session.idle' && event.properties.sessionID === sessionID) {
-                break;
-              }
-              const props = event.properties;
-              if (!('sessionID' in props) || props.sessionID === sessionID) {
-                if (event.type === 'session.error') {
-                  const props = event.properties as { error?: { name?: string } };
-                  throw new OcError({
-                    message: props.error?.name ?? 'Unknown session error',
-                    cause: props.error
-                  });
-                }
-                yield event;
-              }
+        for await (const event of events.stream) {
+          if (promptError) {
+            throw promptError;
+          }
+          if (event.type === 'session.idle' && event.properties.sessionID === sessionID) {
+            break;
+          }
+          const props = event.properties;
+          if (!('sessionID' in props) || props.sessionID === sessionID) {
+            if (event.type === 'session.error') {
+              const props = event.properties as { error?: { name?: string } };
+              throw new OcError({
+                message: props.error?.name ?? 'Unknown session error',
+                cause: props.error
+              });
             }
+            yield event;
           }
-        };
-
-        // Fire the prompt
-        result.client.session.prompt({
-          path: { id: sessionID },
-          body: {
-            agent: 'docs',
-            model: {
-              providerID: this.configService.rawConfig().provider,
-              modelID: this.configService.rawConfig().model
-            },
-            parts: [{ type: 'text', text: question }]
-          }
-        }).catch((err) => {
-          // Handle error
-        });
-
-        return filteredEvents;
-      } catch (err) {
-        if (err instanceof Error && err.message.includes('port')) {
-          portOffset++;
-        } else {
-          throw err;
         }
       }
-    }
-    throw new OcError({
-      message: 'FAILED TO CREATE OPENCODE CLIENT - all ports exhausted',
-      cause: null
+    };
+
+    // Fire the prompt
+    result.client.session.prompt({
+      path: { id: sessionID },
+      body: {
+        agent: 'docs',
+        model: {
+          providerID: this.configService.rawConfig().provider,
+          modelID: this.configService.rawConfig().model
+        },
+        parts: [{ type: 'text', text: question }]
+      }
+    }).catch((err) => {
+      promptError = new OcError({ message: String(err), cause: err });
     });
+
+    return filteredEvents;
   }
 }

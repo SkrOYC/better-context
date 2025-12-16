@@ -23,10 +23,9 @@ export const cloneRepo = async (args: {
 	repoDir: string;
 	url: string;
 	branch: string;
-	quiet?: boolean;
 }): Promise<void> => {
 	try {
-		const { repoDir, url, branch, quiet } = args;
+		const { repoDir, url, branch } = args;
 		await git.clone({
 			fs,
 			http,
@@ -46,9 +45,9 @@ export const cloneRepo = async (args: {
 	}
 };
 
-export const pullRepo = async (args: { repoDir: string; branch: string; quiet?: boolean }): Promise<void> => {
+export const pullRepo = async (args: { repoDir: string; branch: string }): Promise<void> => {
 	try {
-		const { repoDir, branch, quiet } = args;
+		const { repoDir, branch } = args;
 		// Set git config before pulling to avoid author issues
 		await setGitConfig(repoDir);
 		await git.pull({

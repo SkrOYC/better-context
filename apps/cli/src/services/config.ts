@@ -162,8 +162,8 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
     } else {
       const content = await fs.readFile(configPath, 'utf-8');
       const parsed = JSON.parse(content);
-      // Simple validation, since we removed Schema
-      if (!parsed.reposDirectory || !parsed.repos || !parsed.model || !parsed.provider) {
+      // Validate config structure
+      if (typeof parsed.reposDirectory !== 'string' || !Array.isArray(parsed.repos) || typeof parsed.model !== 'string' || typeof parsed.provider !== 'string') {
         throw new Error('Invalid config format');
       }
       const reposDir = expandHome(parsed.reposDirectory);
@@ -211,14 +211,14 @@ export class ConfigService {
     const branch = repo.branch ?? 'main';
     const suppressLogs = options.suppressLogs;
 
-    const exists = await directoryExists(repoDir);
-    if (exists) {
-      if (!suppressLogs) console.log(`Pulling latest changes for ${repo.name}...`);
-      await pullRepo({ repoDir, branch, quiet: suppressLogs });
-    } else {
-      if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
-      await cloneRepo({ repoDir, url: repo.url, branch, quiet: suppressLogs });
-    }
+				const exists = await directoryExists(repoDir);
+				if (exists) {
+					if (!suppressLogs) console.log(`Pulling latest changes for ${repo.name}...`);
+					await pullRepo({ repoDir, branch });
+				} else {
+					if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
+					await cloneRepo({ repoDir, url: repo.url, branch });
+				}
     if (!suppressLogs) console.log(`Done with ${repo.name}`);
     return repo;
   }

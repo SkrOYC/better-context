@@ -1,6 +1,8 @@
 import * as readline from 'readline';
+import fs from 'node:fs/promises';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
+import { directoryExists } from '../lib/utils/files.ts';
 
 declare const __VERSION__: string;
 const VERSION: string = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '0.0.0-dev';
@@ -155,16 +157,36 @@ const handleConfigReposAddCommand = async (args: string[], config: ConfigService
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--name' || args[i] === '-n') {
-      name = args[i + 1] || '';
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --name requires a value');
+        process.exit(1);
+      }
+      name = value;
       i++;
     } else if (args[i] === '--url' || args[i] === '-u') {
-      url = args[i + 1] || '';
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --url requires a value');
+        process.exit(1);
+      }
+      url = value;
       i++;
     } else if (args[i] === '--branch' || args[i] === '-b') {
-      branch = args[i + 1] || 'main';
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --branch requires a value');
+        process.exit(1);
+      }
+      branch = value;
       i++;
     } else if (args[i] === '--notes') {
-      notes = args[i + 1] || '';
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --notes requires a value');
+        process.exit(1);
+      }
+      notes = value;
       i++;
     }
   }
@@ -219,7 +241,12 @@ const handleConfigReposRemoveCommand = async (args: string[], config: ConfigServ
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--name' || args[i] === '-n') {
-      name = args[i + 1] || '';
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --name requires a value');
+        process.exit(1);
+      }
+      name = value;
       i++;
     }
   }
@@ -263,7 +290,7 @@ const handleConfigReposClearCommand = async (config: ConfigService): Promise<voi
   const reposDir = await config.getReposDirectory();
 
   // Check if repos directory exists
-  const exists = await import('node:fs/promises').then(fs => fs.stat(reposDir).then(() => true).catch(() => false));
+  const exists = await directoryExists(reposDir);
 
   if (!exists) {
     console.log('Repos directory does not exist. Nothing to clear.');
@@ -271,7 +298,6 @@ const handleConfigReposClearCommand = async (config: ConfigService): Promise<voi
   }
 
   // List all directories in the repos directory
-  const fs = await import('node:fs/promises');
   const entries = await fs.readdir(reposDir);
   const repoPaths: string[] = [];
 
