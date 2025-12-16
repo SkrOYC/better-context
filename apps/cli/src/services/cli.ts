@@ -1,12 +1,5 @@
 import { Command, Options } from '@effect/cli';
-import {
-	FileSystem,
-	HttpRouter,
-	HttpServer,
-	HttpServerRequest,
-	HttpServerResponse
-} from '@effect/platform';
-import { BunHttpServer } from '@effect/platform-bun';
+import { FileSystem } from '@effect/platform';
 import { Effect, Layer, Schema, Stream } from 'effect';
 import * as readline from 'readline';
 import { OcService, type OcEvent } from './oc.ts';
@@ -79,86 +72,9 @@ const askCommand = Command.make(
 		)
 );
 
-// === Open Subcommand ===
-const openCommand = Command.make('open', {}, () =>
-	Effect.gen(function* () {
-		const oc = yield* OcService;
-		yield* oc.holdOpenInstanceInBg();
-	}).pipe(Effect.provide(programLayer))
-);
 
-// === Chat Subcommand ===
-const chatTechOption = Options.text('tech').pipe(Options.withAlias('t'));
 
-const chatCommand = Command.make('chat', { tech: chatTechOption }, ({ tech }) =>
-	Effect.gen(function* () {
-		const oc = yield* OcService;
-		yield* oc.spawnTui({ tech });
-	}).pipe(Effect.provide(programLayer))
-);
 
-// === Serve Subcommand ===
-const QuestionRequest = Schema.Struct({
-	tech: Schema.String,
-	question: Schema.String
-});
-
-const portOption = Options.integer('port').pipe(Options.withAlias('p'), Options.withDefault(8080));
-
-const serveCommand = Command.make('serve', { port: portOption }, ({ port }) =>
-	Effect.gen(function* () {
-		const router = HttpRouter.empty.pipe(
-			HttpRouter.post(
-				'/question',
-				Effect.gen(function* () {
-					const body = yield* HttpServerRequest.schemaBodyJson(QuestionRequest);
-					const oc = yield* OcService;
-
-					const eventStream = yield* oc.askQuestion({
-						tech: body.tech,
-						question: body.question,
-						suppressLogs: false
-					});
-
-					const chunks: string[] = [];
-					let currentMessageId: string | null = null;
-					yield* eventStream.pipe(
-						Stream.runForEach((event) =>
-							Effect.sync(() => {
-								switch (event.type) {
-									case 'message.part.updated':
-										if (event.properties.part.type === 'text') {
-											if (currentMessageId === event.properties.part.messageID) {
-												chunks[chunks.length - 1] += event.properties.delta ?? '';
-											} else {
-												currentMessageId = event.properties.part.messageID;
-												chunks.push(event.properties.part.text ?? '');
-											}
-										}
-										break;
-									default:
-										break;
-								}
-							})
-						)
-					);
-
-					return yield* HttpServerResponse.json({ answer: chunks.join('') });
-				})
-			)
-		);
-
-		const ServerLive = BunHttpServer.layer({ port });
-
-		const HttpLive = router.pipe(
-			HttpServer.serve(),
-			HttpServer.withLogAddress,
-			Layer.provide(ServerLive)
-		);
-
-		return yield* Layer.launch(HttpLive);
-	}).pipe(Effect.scoped, Effect.provide(programLayer))
-);
 
 // === Config Subcommands ===
 
@@ -464,7 +380,7 @@ const mainCommand = Command.make('btca', {}, () =>
 		console.log(`btca v${VERSION}. run btca --help for more information.`);
 	})
 ).pipe(
-	Command.withSubcommands([askCommand, serveCommand, openCommand, chatCommand, configCommand])
+	Command.withSubcommands([askCommand, configCommand])
 );
 
 const cliService = Effect.gen(function* () {

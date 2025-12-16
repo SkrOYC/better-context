@@ -152,20 +152,6 @@ const ocService = Effect.gen(function* () {
 		});
 
 	return {
-		spawnTui: (args: { tech: string }) =>
-			Effect.gen(function* () {
-				const { tech } = args;
-
-				yield* config.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: false });
-
-				// Launch the internal TUI by importing and calling launchTui
-				const tuiModule = yield* Effect.promise(() => import('../tui/index.tsx'));
-				yield* Effect.promise(async () => {
-					await tuiModule.launchTui();
-					// Keep the effect running, as the TUI exit is handled by process termination (Ctrl+C).
-					return new Promise<void>(() => {});
-				});
-			}),
 		initSession: (tech: string) =>
 			Effect.gen(function* () {
 				const { client, server } = yield* getOpencodeInstance({ tech });
@@ -219,16 +205,6 @@ const ocService = Effect.gen(function* () {
 						return map;
 					});
 				}
-			}),
-		holdOpenInstanceInBg: () =>
-			Effect.gen(function* () {
-				const { client, server } = yield* getOpencodeInstance({
-					tech: 'svelte'
-				});
-
-				yield* Effect.log(`OPENCODE SERVER IS UP AT ${server.url}`);
-
-				yield* Effect.sleep(Duration.days(1));
 			}),
 		askQuestion: (args: { question: string; tech: string; suppressLogs: boolean }) =>
 			Effect.gen(function* () {
