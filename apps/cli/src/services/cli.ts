@@ -1,5 +1,6 @@
 import * as readline from 'readline';
 import fs from 'node:fs/promises';
+import { Command } from 'commander';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
 import { directoryExists } from '../lib/utils/files.ts';
@@ -393,44 +394,359 @@ const handleConfigCommand = async (args: string[], config: ConfigService): Promi
 };
 
 export class CliService {
+  private program: Command;
   private oc: OcService;
   private config: ConfigService;
 
   constructor(oc: OcService, config: ConfigService) {
     this.oc = oc;
     this.config = config;
+    this.program = new Command();
+
+    this.setupProgram();
+    this.setupCommands();
   }
 
-  async run(args: string[]): Promise<void> {
-    if (args.length === 0) {
-      console.log(`btca v${VERSION}. run btca --help for more information.`);
+  private setupProgram(): void {
+    this.program
+      .name('btca')
+      .description('CLI tool for asking questions about technologies using OpenCode')
+      .version(VERSION)
+      .addHelpText('after', `
+
+EXAMPLES:
+  $ btca ask --question "How do I use React hooks?" --tech react
+  $ btca ask -q "What are TypeScript generics?" -t typescript
+  $ btca config model --provider openai --model gpt-4
+  $ btca config repos add --name my-repo --url https://github.com/user/repo
+  $ btca config repos list
+
+For more detailed help, use: btca <command> --help`)
+      .configureHelp({
+        sortSubcommands: true,
+        sortOptions: true,
+        showGlobalOptions: false
+      });
+  }
+
+  private setupCommands(): void {
+    // Ask command
+    this.program
+      .command('ask')
+      .description('Ask questions about technologies using AI')
+      .requiredOption('-q, --question <question>', 'question to ask about the technology')
+      .requiredOption('-t, --tech <technology>', 'technology to ask about (e.g., react, typescript, node)')
+      .addHelpText('after', `
+EXAMPLES:
+  $ btca ask --question "How do I create a React component?" --tech react
+  $ btca ask -q "What are TypeScript interfaces?" -t typescript
+  $ btca ask --question "How to set up Express middleware?" --tech express
+
+Available technologies: svelte, tailwindcss, opentui, runed`)
+      .action(async (options) => {
+        await this.handleAskCommand(options.question, options.tech);
+      });
+
+    // Config command and subcommands
+    const configCommand = this.program
+      .command('config')
+      .description('Manage btca configuration settings')
+      .addHelpText('after', `
+EXAMPLES:
+  $ btca config model                    # View current model settings
+  $ btca config model --provider openai --model gpt-4  # Set model
+  $ btca config repos list               # List configured repos
+  $ btca config repos add --name docs --url https://github.com/user/docs
+  $ btca config repos remove --name docs # Remove a repo`);
+
+    // Config model subcommand
+    configCommand
+      .command('model')
+      .description('View or set the AI model and provider configuration')
+      .option('-p, --provider <provider>', 'AI provider (e.g., openai, anthropic)')
+      .option('-m, --model <model>', 'AI model name (e.g., gpt-4, claude-3)')
+      .addHelpText('after', `
+EXAMPLES:
+  $ btca config model                           # Show current settings
+  $ btca config model --provider openai --model gpt-4
+  $ btca config model -p anthropic -m claude-3-sonnet`)
+      .action(async (options) => {
+        await this.handleConfigModelCommand(options.provider, options.model);
+      });
+
+    // Config repos subcommand
+    const reposCommand = configCommand
+      .command('repos')
+      .description('Manage configured repositories for documentation')
+      .addHelpText('after', `
+EXAMPLES:
+  $ btca config repos list
+  $ btca config repos add --name react-docs --url https://github.com/facebook/react
+  $ btca config repos remove --name react-docs
+  $ btca config repos clear`);
+
+    reposCommand
+      .command('list')
+      .description('List all configured repositories')
+      .action(async () => {
+        await this.handleConfigReposListCommand();
+      });
+
+    reposCommand
+      .command('add')
+      .description('Add a new repository to the configuration')
+      .option('-n, --name <name>', 'repository name (used as identifier)')
+      .option('-u, --url <url>', 'repository URL')
+      .option('-b, --branch <branch>', 'branch to use', 'main')
+      .option('--notes <notes>', 'special notes about this repository')
+      .addHelpText('after', `
+EXAMPLES:
+  $ btca config repos add --name react --url https://github.com/facebook/react
+  $ btca config repos add -n typescript -u https://github.com/microsoft/TypeScript -b main
+  $ btca config repos add --name my-docs --url https://github.com/user/docs --notes "Internal docs"`)
+      .action(async (options) => {
+        await this.handleConfigReposAddCommand(options.name, options.url, options.branch, options.notes);
+      });
+
+    reposCommand
+      .command('remove')
+      .description('Remove a repository from the configuration')
+      .option('-n, --name <name>', 'repository name to remove')
+      .addHelpText('after', `
+EXAMPLES:
+  $ btca config repos remove --name react
+  $ btca config repos remove -n typescript`)
+      .action(async (options) => {
+        await this.handleConfigReposRemoveCommand(options.name);
+      });
+
+    reposCommand
+      .command('clear')
+      .description('Clear all downloaded repositories from disk')
+      .addHelpText('after', `
+WARNING: This will delete all downloaded repository data from your local machine.
+
+EXAMPLE:
+  $ btca config repos clear`)
+      .action(async () => {
+        await this.handleConfigReposClearCommand();
+      });
+  }
+
+  private async handleAskCommand(question: string, tech: string): Promise<void> {
+    try {
+      const eventStream = await this.oc.askQuestion({ tech, question, suppressLogs: false });
+
+      let currentMessageId: string | null = null;
+
+      for await (const event of eventStream) {
+        switch (event.type) {
+          case 'message.part.updated':
+            if (event.properties.part.type === 'text') {
+              if (currentMessageId === event.properties.part.messageID) {
+                process.stdout.write(event.properties.delta ?? '');
+              } else {
+                currentMessageId = event.properties.part.messageID;
+                process.stdout.write('\n\n' + event.properties.part.text);
+              }
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      console.log('\n');
+    } catch (e: any) {
+      if (e.name === 'InvalidProviderError') {
+        console.error(`Error: Unknown provider "${e.providerId}"`);
+        console.error(`Available providers: ${e.availableProviders.join(', ')}`);
+        process.exit(1);
+      } else if (e.name === 'InvalidModelError') {
+        console.error(`Error: Unknown model "${e.modelId}" for provider "${e.providerId}"`);
+        console.error(`Available models: ${e.availableModels.join(', ')}`);
+        process.exit(1);
+      } else if (e.name === 'ProviderNotConnectedError') {
+        console.error(`Error: Provider "${e.providerId}" is not connected`);
+        console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
+        console.error(`Run "opencode auth" to configure provider credentials.`);
+        process.exit(1);
+      }
+      throw e;
+    }
+  }
+
+  private async handleConfigModelCommand(provider?: string, model?: string): Promise<void> {
+    if (provider && model) {
+      const result = await this.config.updateModel({ provider, model });
+      console.log(`Updated model configuration:`);
+      console.log(`  Provider: ${result.provider}`);
+      console.log(`  Model: ${result.model}`);
+    } else if (provider || model) {
+      console.error('Error: Both --provider and --model must be specified together');
+      process.exit(1);
+    } else {
+      const current = await this.config.getModel();
+      console.log(`Current model configuration:`);
+      console.log(`  Provider: ${current.provider}`);
+      console.log(`  Model: ${current.model}`);
+    }
+  }
+
+  private async handleConfigReposListCommand(): Promise<void> {
+    const repos = await this.config.getRepos();
+
+    if (repos.length === 0) {
+      console.log('No repos configured.');
       return;
     }
 
-    const command = args[0];
-    const commandArgs = args.slice(1);
-
-    switch (command) {
-      case 'ask':
-        await handleAskCommand(commandArgs, this.oc);
-        break;
-      case 'config':
-        await handleConfigCommand(commandArgs, this.config);
-        break;
-      case '--help':
-      case '-h':
-        console.log(`btca v${VERSION}`);
-        console.log('');
-        console.log('Usage: btca <command> [options]');
-        console.log('');
-        console.log('Commands:');
-        console.log('  ask     Ask questions about technologies');
-        console.log('  config  Manage configuration');
-        console.log('  --help  Show this help');
-        break;
-      default:
-        console.error(`Unknown command: ${command}`);
-        process.exit(1);
+    console.log('Configured repos:\n');
+    for (const repo of repos) {
+      console.log(`  ${repo.name}`);
+      console.log(`    URL: ${repo.url}`);
+      console.log(`    Branch: ${repo.branch}`);
+      if (repo.specialNotes) {
+        console.log(`    Notes: ${repo.specialNotes}`);
+      }
+      console.log();
     }
+  }
+
+  private async handleConfigReposAddCommand(name?: string, url?: string, branch?: string, notes?: string): Promise<void> {
+    let repoName: string;
+    if (name) {
+      repoName = name;
+    } else {
+      repoName = await askText('Enter repo name: ');
+    }
+
+    if (!repoName) {
+      console.log('No repo name provided.');
+      return;
+    }
+
+    let repoUrl: string;
+    if (url) {
+      repoUrl = url;
+    } else {
+      repoUrl = await askText('Enter repo URL: ');
+    }
+
+    if (!repoUrl) {
+      console.log('No repo URL provided.');
+      return;
+    }
+
+    const repo = {
+      name: repoName,
+      url: repoUrl,
+      branch: branch || 'main',
+      ...(notes ? { specialNotes: notes } : {})
+    };
+
+    try {
+      await this.config.addRepo(repo);
+      console.log(`Added repo "${repoName}":`);
+      console.log(`  URL: ${repoUrl}`);
+      console.log(`  Branch: ${repo.branch}`);
+      if (notes) {
+        console.log(`  Notes: ${notes}`);
+      }
+    } catch (e: any) {
+      console.error(`Error: ${e.message}`);
+      process.exit(1);
+    }
+  }
+
+  private async handleConfigReposRemoveCommand(name?: string): Promise<void> {
+    let repoName: string;
+    if (name) {
+      repoName = name;
+    } else {
+      repoName = await askText('Enter repo name to remove: ');
+    }
+
+    if (!repoName) {
+      console.log('No repo name provided.');
+      return;
+    }
+
+    const repos = await this.config.getRepos();
+    const exists = repos.find((r) => r.name === repoName);
+    if (!exists) {
+      console.error(`Error: Repo "${repoName}" not found.`);
+      process.exit(1);
+    }
+
+    const confirmed = await askConfirmation(`Are you sure you want to remove repo "${repoName}" from config? (y/N): `);
+
+    if (!confirmed) {
+      console.log('Aborted.');
+      return;
+    }
+
+    try {
+      await this.config.removeRepo(repoName);
+      console.log(`Removed repo "${repoName}".`);
+    } catch (e: any) {
+      console.error(`Error: ${e.message}`);
+      process.exit(1);
+    }
+  }
+
+  private async handleConfigReposClearCommand(): Promise<void> {
+    const reposDir = await this.config.getReposDirectory();
+
+    // Check if repos directory exists
+    const exists = await directoryExists(reposDir);
+
+    if (!exists) {
+      console.log('Repos directory does not exist. Nothing to clear.');
+      return;
+    }
+
+    // List all directories in the repos directory
+    const entries = await fs.readdir(reposDir);
+    const repoPaths: string[] = [];
+
+    for (const entry of entries) {
+      const fullPath = `${reposDir}/${entry}`;
+      const stat = await fs.stat(fullPath);
+      if (stat.isDirectory()) {
+        repoPaths.push(fullPath);
+      }
+    }
+
+    if (repoPaths.length === 0) {
+      console.log('No repos found in the repos directory. Nothing to clear.');
+      return;
+    }
+
+    console.log('The following repos will be deleted:\n');
+    for (const repoPath of repoPaths) {
+      console.log(`  ${repoPath}`);
+    }
+    console.log();
+
+    const confirmed = await askConfirmation('Are you sure you want to delete these repos? (y/N): ');
+
+    if (!confirmed) {
+      console.log('Aborted.');
+      return;
+    }
+
+    for (const repoPath of repoPaths) {
+      await fs.rm(repoPath, { recursive: true });
+      console.log(`Deleted: ${repoPath}`);
+    }
+
+    console.log('\nAll repos have been cleared.');
+  }
+
+  async run(args: string[]): Promise<void> {
+    // Commander.js expects the full argv array, so we reconstruct it
+    const fullArgs = ['node', 'btca', ...args];
+    await this.program.parseAsync(fullArgs);
   }
 }
