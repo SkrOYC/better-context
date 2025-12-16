@@ -5,8 +5,9 @@ import {
   type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
-import { OcError } from '../lib/errors.ts';
+import { OcError, InvalidTechError } from '../lib/errors.ts';
 import { validateProviderAndModel } from '../lib/utils/validation.ts';
+import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
 
 export type { Event as OcEvent };
 
@@ -24,7 +25,12 @@ export class OcService {
     const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
 
     if (!configObject) {
-      throw new OcError('Config not found for tech', null);
+      // Get available techs and suggest similar ones if tech is not found
+      const allRepos = this.configService.getRepos();
+      const availableTechs = allRepos.map(repo => repo.name);
+      const suggestedTechs = findSimilarStrings(tech, availableTechs, 3); // Increase threshold to allow more suggestions
+      
+      throw new InvalidTechError(tech, availableTechs, suggestedTechs);
     }
 
     while (portOffset < maxInstances) {
@@ -118,6 +124,15 @@ export class OcService {
 
   async askQuestion(args: { question: string; tech: string }): Promise<AsyncIterable<Event>> {
     const { question, tech } = args;
+
+    // Validate tech name first and provide suggestions if not found
+    // This prevents attempting to clone a non-existent repo
+    const allRepos = this.configService.getRepos();
+    const availableTechs = allRepos.map(repo => repo.name);
+    if (!availableTechs.includes(tech)) {
+      const suggestedTechs = findSimilarStrings(tech, availableTechs, 3); // Increase threshold to allow more suggestions
+      throw new InvalidTechError(tech, availableTechs, suggestedTechs);
+    }
 
     await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: true });
 
