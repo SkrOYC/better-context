@@ -20,8 +20,6 @@ type Repo = {
 
 type Config = {
   reposDirectory: string;
-  port: number;
-  maxInstances: number;
   repos: Repo[];
   model: string;
   provider: string;
@@ -29,8 +27,6 @@ type Config = {
 
 const DEFAULT_CONFIG: Config = {
   reposDirectory: '~/.local/share/btca/repos',
-  port: 3420,
-  maxInstances: 5,
   repos: [
     {
       name: 'svelte',
@@ -144,6 +140,7 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
   try {
     const exists = await fs.stat(configPath).then(() => true).catch(() => false);
 
+    let config: Config;
     if (!exists) {
       console.log(`Config file not found at ${configPath}, creating default config...`);
       // Ensure directory exists
@@ -151,31 +148,32 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
       await fs.writeFile(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2));
       console.log(`Default config created at ${configPath}`);
       const reposDir = expandHome(DEFAULT_CONFIG.reposDirectory);
-      const config = {
+      config = {
         ...DEFAULT_CONFIG,
         reposDirectory: reposDir
-      };
-      return {
-        config,
-        configPath
       };
     } else {
       const content = await fs.readFile(configPath, 'utf-8');
       const parsed = JSON.parse(content);
       // Validate config structure
-      if (typeof parsed.reposDirectory !== 'string' || !Array.isArray(parsed.repos) || typeof parsed.model !== 'string' || typeof parsed.provider !== 'string') {
-        throw new Error('Invalid config format');
+      if (typeof parsed.reposDirectory !== 'string' || !Array.isArray(parsed.repos) || !parsed.repos.every((r: any) => r && typeof r.name === 'string' && typeof r.url === 'string' && typeof r.branch === 'string') || typeof parsed.model !== 'string' || typeof parsed.provider !== 'string') {
+        throw new Error('Config file is invalid. Ensure `reposDirectory` (string), `repos` (array of objects with `name`, `url`, `branch`), `model` (string), and `provider` (string) are correctly defined.');
       }
       const reposDir = expandHome(parsed.reposDirectory);
-      const config = {
-        ...parsed,
-        reposDirectory: reposDir
-      };
-      return {
-        config,
-        configPath
+      config = {
+        reposDirectory: reposDir,
+        repos: parsed.repos,
+        model: parsed.model,
+        provider: parsed.provider
       };
     }
+    // Apply environment variable overrides
+    config.model = process.env.BTCA_MODEL || config.model;
+    config.provider = process.env.BTCA_PROVIDER || config.provider;
+    return {
+      config,
+      configPath
+    };
   } catch (error) {
     throw new ConfigError({
       message: 'Failed to load config',
