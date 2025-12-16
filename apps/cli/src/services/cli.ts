@@ -676,68 +676,68 @@ EXAMPLES:
     }
   }
 
-   private async handleConfigReposClearCommand(): Promise<void> {
-     const reposDir = await this.config.getReposDirectory();
+  private async handleConfigReposClearCommand(): Promise<void> {
+    const reposDir = await this.config.getReposDirectory();
 
-     // Check if repos directory exists
-     const exists = await directoryExists(reposDir);
+    // Check if repos directory exists
+    const exists = await directoryExists(reposDir);
 
-     if (!exists) {
-       console.log('Repos directory does not exist. Nothing to clear.');
-       return;
-     }
+    if (!exists) {
+      console.log('Repos directory does not exist. Nothing to clear.');
+      return;
+    }
 
-     // List all directories in the repos directory
-     const entries = await fs.readdir(reposDir);
-     const repoPaths: string[] = [];
+    // List all directories in the repos directory
+    const entries = await fs.readdir(reposDir);
+    const repoPaths: string[] = [];
 
-     for (const entry of entries) {
-       const fullPath = path.join(reposDir, entry);
-       const stat = await fs.stat(fullPath);
-       if (stat.isDirectory()) {
-         repoPaths.push(fullPath);
-       }
-     }
+    for (const entry of entries) {
+      const fullPath = path.join(reposDir, entry);
+      const stat = await fs.stat(fullPath);
+      if (stat.isDirectory()) {
+        repoPaths.push(fullPath);
+      }
+    }
 
-     if (repoPaths.length === 0) {
-       console.log('No repos found in the repos directory. Nothing to clear.');
-       return;
-     }
+    if (repoPaths.length === 0) {
+      console.log('No repos found in the repos directory. Nothing to clear.');
+      return;
+    }
 
-     console.log('The following repos will be deleted:\n');
-     for (const repoPath of repoPaths) {
-       console.log(`  ${repoPath}`);
-     }
-     console.log();
+    console.log('The following repos will be deleted:\n');
+    for (const repoPath of repoPaths) {
+      console.log(`  ${repoPath}`);
+    }
+    console.log();
 
-     const confirmed = await askConfirmation('Are you sure you want to delete these repos? (y/N): ');
+    const confirmed = await askConfirmation('Are you sure you want to delete these repos? (y/N): ');
 
-     if (!confirmed) {
-       console.log('Aborted.');
-       return;
-     }
+    if (!confirmed) {
+      console.log('Aborted.');
+      return;
+    }
 
-     for (const repoPath of repoPaths) {
-       await fs.rm(repoPath, { recursive: true });
-       console.log(`Deleted: ${repoPath}`);
-     }
+    for (const repoPath of repoPaths) {
+      await fs.rm(repoPath, { recursive: true });
+      console.log(`Deleted: ${repoPath}`);
+    }
 
-     console.log('\nAll repos have been cleared.');
-   }
+    console.log('\nAll repos have been cleared.');
+  }
 
-   private async handleListCommand(): Promise<void> {
-     const repos = await this.config.getRepos();
-     
-     if (repos.length === 0) {
-       console.log('No technologies configured.');
-       return;
-     }
-     
-     // Output each technology name on a separate line (clean and parseable format)
-     for (const repo of repos) {
-       console.log(repo.name);
-     }
-   }
+  private async handleListCommand(): Promise<void> {
+    const repos = await this.config.getRepos();
+    
+    if (repos.length === 0) {
+      console.log('No technologies configured.');
+      return;
+    }
+    
+    // Output each technology name on a separate line (clean and parseable format)
+    for (const repo of repos) {
+      console.log(repo.name);
+    }
+  }
 
   async run(args: string[]): Promise<void> {
     await this.initialize();
