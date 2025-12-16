@@ -1,5 +1,8 @@
 import { Effect } from 'effect';
 import { ConfigError } from '../errors';
+import fs from 'node:fs';
+import git from 'isomorphic-git';
+import http from 'isomorphic-git/http/node';
 
 export const cloneRepo = (args: {
 	repoDir: string;
@@ -10,14 +13,18 @@ export const cloneRepo = (args: {
 	Effect.tryPromise({
 		try: async () => {
 			const { repoDir, url, branch, quiet } = args;
-			const proc = Bun.spawn(['git', 'clone', '--branch', branch, url, repoDir], {
-				stdout: quiet ? 'ignore' : 'inherit',
-				stderr: quiet ? 'ignore' : 'inherit'
+			await git.clone({
+				fs,
+				http,
+				dir: repoDir,
+				url,
+				ref: branch,
+				depth: 1,
+				singleBranch: true,
+				onProgress: quiet ? undefined : (progress) => {
+					console.log(`${progress.phase}: ${progress.loaded}/${progress.total}`);
+				}
 			});
-			const exitCode = await proc.exited;
-			if (exitCode !== 0) {
-				throw new Error(`git clone failed with exit code ${exitCode}`);
-			}
 		},
 		catch: (error) => new ConfigError({ message: 'Failed to clone repo', cause: error })
 	});
@@ -26,15 +33,15 @@ export const pullRepo = (args: { repoDir: string; branch: string; quiet?: boolea
 	Effect.tryPromise({
 		try: async () => {
 			const { repoDir, branch, quiet } = args;
-			const proc = Bun.spawn(['git', 'pull', 'origin', branch], {
-				cwd: repoDir,
-				stdout: quiet ? 'ignore' : 'inherit',
-				stderr: quiet ? 'ignore' : 'inherit'
+			await git.pull({
+				fs,
+				http,
+				dir: repoDir,
+				ref: branch,
+				onProgress: quiet ? undefined : (progress) => {
+					console.log(`${progress.phase}: ${progress.loaded}/${progress.total}`);
+				}
 			});
-			const exitCode = await proc.exited;
-			if (exitCode !== 0) {
-				throw new Error(`git pull failed with exit code ${exitCode}`);
-			}
 		},
 		catch: (error) => new ConfigError({ message: 'Failed to pull repo', cause: error })
 	});
