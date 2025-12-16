@@ -1,247 +1,204 @@
 import {
-	createOpencode,
-	OpencodeClient,
-	type Event,
-	type Config as OpenCodeConfig
+  createOpencode,
+  OpencodeClient,
+  type Event,
+  type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
-import { Deferred, Duration, Effect, Ref, Stream } from 'effect';
 import { ConfigService } from './config.ts';
 import { OcError } from '../lib/errors.ts';
 import { validateProviderAndModel } from '../lib/utils/validation.ts';
 
-
-
 export type { Event as OcEvent };
 
-const ocService = Effect.gen(function* () {
-	const config = yield* ConfigService;
+export class OcService {
+  private configService: ConfigService;
+  private sessions = new Map<string, { client: OpencodeClient; server: { close: () => void; url: string } }>();
 
-	const rawConfig = yield* config.rawConfig();
+  constructor(configService: ConfigService) {
+    this.configService = configService;
+  }
 
-	const sessionsRef = yield* Ref.make(new Map<string, { client: OpencodeClient; server: { close: () => void; url: string } }>());
+  private async getOpencodeInstance(tech: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
+    let portOffset = 0;
+    const maxInstances = 5;
+    const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
 
-	const getOpencodeInstance = ({ tech }: { tech: string }) =>
-		Effect.gen(function* () {
-			let portOffset = 0;
-			const maxInstances = 5;
-			const configObject = yield* config.getOpenCodeConfig({ repoName: tech });
+    if (!configObject) {
+      throw new OcError({
+        message: 'Config not found for tech',
+        cause: null
+      });
+    }
 
-			while (portOffset < maxInstances) {
-				const result = yield* Effect.tryPromise(() =>
-					createOpencode({
-						port: 3420 + portOffset,
-						config: configObject
-					})
-				).pipe(
-					Effect.catchAll((err) => {
-						if (err.cause instanceof Error && err.cause.stack?.includes('port')) {
-							portOffset++;
-							return Effect.succeed(null);
-						}
-						return Effect.fail(
-							new OcError({
-								message: 'FAILED TO CREATE OPENCODE CLIENT',
-								cause: err
-							})
-						);
-					})
-				);
-				if (result !== null) {
-					return result;
-				}
-			}
-			return yield* Effect.fail(
-				new OcError({
-					message: 'FAILED TO CREATE OPENCODE CLIENT - all ports exhausted',
-					cause: null
-				})
-			);
-		});
+    while (portOffset < maxInstances) {
+      try {
+        const result = await createOpencode({
+          port: 3420 + portOffset,
+          config: configObject
+        });
+        return result;
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('port')) {
+          portOffset++;
+        } else {
+          throw new OcError({
+            message: 'FAILED TO CREATE OPENCODE CLIENT',
+            cause: err
+          });
+        }
+      }
+    }
+    throw new OcError({
+      message: 'FAILED TO CREATE OPENCODE CLIENT - all ports exhausted',
+      cause: null
+    });
+  }
 
-	const streamSessionEvents = (args: { sessionID: string; client: OpencodeClient }) =>
-		Effect.gen(function* () {
-			const { sessionID, client } = args;
+  async initSession(tech: string): Promise<string> {
+    const result = await this.getOpencodeInstance(tech);
+    const session = await result.client.session.create();
 
-			const events = yield* Effect.tryPromise({
-				try: () => client.event.subscribe(),
-				catch: (err) =>
-					new OcError({
-						message: 'Failed to subscribe to events',
-						cause: err
-					})
-			});
+    if (session.error) {
+      throw new OcError({
+        message: 'FAILED TO START OPENCODE SESSION',
+        cause: session.error
+      });
+    }
 
-			return Stream.fromAsyncIterable(
-				events.stream,
-				(e) => new OcError({ message: 'Event stream error', cause: e })
-			).pipe(
-				Stream.filter((event) => {
-					const props = event.properties;
-					if (!('sessionID' in props)) return true;
-					return props.sessionID === sessionID;
-				}),
-				Stream.takeUntil(
-					(event) => event.type === 'session.idle' && event.properties.sessionID === sessionID
-				)
-			);
-		});
+    const sessionID = session.data.id;
+    this.sessions.set(sessionID, { client: result.client, server: result.server });
 
-	const firePrompt = (args: {
-		sessionID: string;
-		text: string;
-		errorDeferred: Deferred.Deferred<never, OcError>;
-		client: OpencodeClient;
-	}) =>
-		Effect.promise(() =>
-			args.client.session.prompt({
-				path: { id: args.sessionID },
-				body: {
-					agent: 'docs',
-					model: {
-						providerID: rawConfig.provider,
-						modelID: rawConfig.model
-					},
-					parts: [{ type: 'text', text: args.text }]
-				}
-			})
-		).pipe(
-			Effect.catchAll((err) =>
-				Deferred.fail(args.errorDeferred, new OcError({ message: String(err), cause: err }))
-			)
-		);
+    return sessionID;
+  }
 
-	const streamPrompt = (args: {
-		sessionID: string;
-		prompt: string;
-		client: OpencodeClient;
-		cleanup: () => void;
-	}) =>
-		Effect.gen(function* () {
-			const { sessionID, prompt, client } = args;
+  async sendPrompt(sessionId: string, text: string): Promise<AsyncIterable<Event>> {
+    const sessionData = this.sessions.get(sessionId);
+    if (!sessionData) {
+      throw new OcError({
+        message: 'Session not found',
+        cause: null
+      });
+    }
+    const { client } = sessionData;
 
-			const eventStream = yield* streamSessionEvents({ sessionID, client });
+    const events = await client.event.subscribe();
+    let promptError: Error | null = null;
 
-			const errorDeferred = yield* Deferred.make<never, OcError>();
+    const filteredEvents = {
+      async *[Symbol.asyncIterator]() {
+        if (promptError) {
+          throw promptError;
+        }
+        for await (const event of events.stream) {
+          if (promptError) {
+            throw promptError;
+          }
+          const props = event.properties;
+          if (!('sessionID' in props) || props.sessionID === sessionId) {
+            if (event.type === 'session.error') {
+              const props = event.properties as { error?: { name?: string } };
+              throw new OcError({
+                message: props.error?.name ?? 'Unknown session error',
+                cause: props.error
+              });
+            }
+            yield event;
+          }
+        }
+      }
+    };
 
-			yield* firePrompt({
-				sessionID,
-				text: prompt,
-				errorDeferred,
-				client
-			}).pipe(Effect.forkDaemon);
+    // Fire the prompt
+    client.session.prompt({
+      path: { id: sessionId },
+      body: {
+        agent: 'docs',
+        model: {
+          providerID: this.configService.rawConfig().provider,
+          modelID: this.configService.rawConfig().model
+        },
+        parts: [{ type: 'text', text }]
+      }
+    }).catch((err) => {
+      promptError = new OcError({ message: String(err), cause: err });
+    });
 
-			// Transform stream to fail on session.error, race with prompt error
-			return eventStream.pipe(
-				Stream.mapEffect((event) =>
-					Effect.gen(function* () {
-						if (event.type === 'session.error') {
-							const props = event.properties as { error?: { name?: string } };
-							return yield* Effect.fail(
-								new OcError({
-									message: props.error?.name ?? 'Unknown session error',
-									cause: props.error
-								})
-							);
-						}
-						return event;
-					})
-				),
-				Stream.ensuring(Effect.sync(() => args.cleanup())),
-				Stream.interruptWhen(Deferred.await(errorDeferred))
-			);
-		});
+    return filteredEvents;
+  }
 
-	return {
-		initSession: (tech: string) =>
-			Effect.gen(function* () {
-				const { client, server } = yield* getOpencodeInstance({ tech });
+  async closeSession(sessionId: string): Promise<void> {
+    const sessionData = this.sessions.get(sessionId);
+    if (sessionData) {
+      sessionData.server.close();
+      this.sessions.delete(sessionId);
+    }
+  }
 
-				const session = yield* Effect.promise(() => client.session.create());
+  async askQuestion(args: { question: string; tech: string; suppressLogs: boolean }): Promise<AsyncIterable<Event>> {
+    const { question, tech, suppressLogs } = args;
 
-				if (session.error) {
-					return yield* Effect.fail(
-						new OcError({
-							message: 'FAILED TO START OPENCODE SESSION',
-							cause: session.error
-						})
-					);
-				}
+    await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs });
 
-				const sessionID = session.data.id;
+    const result = await this.getOpencodeInstance(tech);
 
-				yield* Ref.update(sessionsRef, (map) => map.set(sessionID, { client, server }));
+    await validateProviderAndModel(result.client, this.configService.rawConfig().provider, this.configService.rawConfig().model);
 
-				return sessionID;
-			}),
-		sendPrompt: (sessionId: string, text: string) =>
-			Effect.gen(function* () {
-				const sessions = yield* Ref.get(sessionsRef);
-				const sessionData = sessions.get(sessionId);
-				if (!sessionData) {
-					return yield* Effect.fail(
-						new OcError({
-							message: 'Session not found',
-							cause: null
-						})
-					);
-				}
-				const { client } = sessionData;
+    const session = await result.client.session.create();
 
-				return yield* streamPrompt({
-					sessionID: sessionId,
-					prompt: text,
-					client,
-					cleanup: () => {} // Session persists, no cleanup
-				});
-			}),
-		closeSession: (sessionId: string) =>
-			Effect.gen(function* () {
-				const sessions = yield* Ref.get(sessionsRef);
-				const sessionData = sessions.get(sessionId);
-				if (sessionData) {
-					sessionData.server.close();
-					yield* Ref.update(sessionsRef, (map) => {
-						map.delete(sessionId);
-						return map;
-					});
-				}
-			}),
-		askQuestion: (args: { question: string; tech: string; suppressLogs: boolean }) =>
-			Effect.gen(function* () {
-				const { question, tech, suppressLogs } = args;
+    if (session.error) {
+      throw new OcError({
+        message: 'FAILED TO START OPENCODE SESSION',
+        cause: session.error
+      });
+    }
 
-				yield* config.cloneOrUpdateOneRepoLocally(tech, { suppressLogs });
+    const sessionID = session.data.id;
 
-				const { client, server } = yield* getOpencodeInstance({ tech });
+    const events = await result.client.event.subscribe();
+    let promptError: Error | null = null;
 
-				yield* validateProviderAndModel(client, rawConfig.provider, rawConfig.model);
+    const filteredEvents = {
+      async *[Symbol.asyncIterator]() {
+        if (promptError) {
+          throw promptError;
+        }
+        for await (const event of events.stream) {
+          if (promptError) {
+            throw promptError;
+          }
+          if (event.type === 'session.idle' && event.properties.sessionID === sessionID) {
+            break;
+          }
+          const props = event.properties;
+          if (!('sessionID' in props) || props.sessionID === sessionID) {
+            if (event.type === 'session.error') {
+              const props = event.properties as { error?: { name?: string } };
+              throw new OcError({
+                message: props.error?.name ?? 'Unknown session error',
+                cause: props.error
+              });
+            }
+            yield event;
+          }
+        }
+      }
+    };
 
-				const session = yield* Effect.promise(() => client.session.create());
+    // Fire the prompt
+    result.client.session.prompt({
+      path: { id: sessionID },
+      body: {
+        agent: 'docs',
+        model: {
+          providerID: this.configService.rawConfig().provider,
+          modelID: this.configService.rawConfig().model
+        },
+        parts: [{ type: 'text', text: question }]
+      }
+    }).catch((err) => {
+      promptError = new OcError({ message: String(err), cause: err });
+    });
 
-				if (session.error) {
-					return yield* Effect.fail(
-						new OcError({
-							message: 'FAILED TO START OPENCODE SESSION',
-							cause: session.error
-						})
-					);
-				}
-
-				const sessionID = session.data.id;
-
-				return yield* streamPrompt({
-					sessionID,
-					prompt: question,
-					client,
-					cleanup: () => {
-						server.close();
-					}
-				});
-			})
-	};
-});
-
-export class OcService extends Effect.Service<OcService>()('OcService', {
-	effect: ocService,
-	dependencies: [ConfigService.Default]
-}) {}
+    return filteredEvents;
+  }
+}

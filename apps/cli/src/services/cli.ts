@@ -1,400 +1,436 @@
-import { Command, Options } from '@effect/cli';
-import { FileSystem } from '@effect/platform';
-import { Effect, Layer, Schema, Stream } from 'effect';
 import * as readline from 'readline';
+import fs from 'node:fs/promises';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
+import { directoryExists } from '../lib/utils/files.ts';
 
 declare const __VERSION__: string;
 const VERSION: string = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '0.0.0-dev';
 
-const programLayer = Layer.mergeAll(OcService.Default, ConfigService.Default);
+export type { OcEvent };
 
-// === Ask Subcommand ===
-const questionOption = Options.text('question').pipe(Options.withAlias('q'));
-const techOption = Options.text('tech').pipe(Options.withAlias('t'));
+const askConfirmation = (question: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
 
-const askCommand = Command.make(
-	'ask',
-	{ question: questionOption, tech: techOption },
-	({ question, tech }) =>
-		Effect.gen(function* () {
-			const oc = yield* OcService;
-			const eventStream = yield* oc.askQuestion({ tech, question, suppressLogs: false });
+    rl.question(question, (answer) => {
+      rl.close();
+      const normalized = answer.toLowerCase().trim();
+      resolve(normalized === 'y' || normalized === 'yes');
+    });
+  });
+};
 
-			let currentMessageId: string | null = null;
+const askText = (question: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
 
-			yield* eventStream.pipe(
-				Stream.runForEach((event) =>
-					Effect.sync(() => {
-						switch (event.type) {
-							case 'message.part.updated':
-								if (event.properties.part.type === 'text') {
-									if (currentMessageId === event.properties.part.messageID) {
-										process.stdout.write(event.properties.delta ?? '');
-									} else {
-										currentMessageId = event.properties.part.messageID;
-										process.stdout.write('\n\n' + event.properties.part.text);
-									}
-								}
-								break;
-							default:
-								break;
-						}
-					})
-				)
-			);
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+};
 
-			console.log('\n');
-		}).pipe(
-			Effect.catchTags({
-				InvalidProviderError: (e) =>
-					Effect.sync(() => {
-						console.error(`Error: Unknown provider "${e.providerId}"`);
-						console.error(`Available providers: ${e.availableProviders.join(', ')}`);
-						process.exit(1);
-					}),
-				InvalidModelError: (e) =>
-					Effect.sync(() => {
-						console.error(`Error: Unknown model "${e.modelId}" for provider "${e.providerId}"`);
-						console.error(`Available models: ${e.availableModels.join(', ')}`);
-						process.exit(1);
-					}),
-				ProviderNotConnectedError: (e) =>
-					Effect.sync(() => {
-						console.error(`Error: Provider "${e.providerId}" is not connected`);
-						console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
-						console.error(`Run "opencode auth" to configure provider credentials.`);
-						process.exit(1);
-					})
-			}),
-			Effect.provide(programLayer)
-		)
-);
+const handleAskCommand = async (args: string[], oc: OcService): Promise<void> => {
+  let question: string | undefined;
+  let tech: string | undefined;
 
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--question' || args[i] === '-q') {
+      question = args[i + 1];
+      i++;
+    } else if (args[i] === '--tech' || args[i] === '-t') {
+      tech = args[i + 1];
+      i++;
+    }
+  }
 
+  if (!question || !tech) {
+    console.error('Usage: btca ask --question <question> --tech <tech>');
+    process.exit(1);
+  }
 
+  try {
+    const eventStream = await oc.askQuestion({ tech, question, suppressLogs: false });
 
+    let currentMessageId: string | null = null;
 
-// === Config Subcommands ===
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case 'message.part.updated':
+          if (event.properties.part.type === 'text') {
+            if (currentMessageId === event.properties.part.messageID) {
+              process.stdout.write(event.properties.delta ?? '');
+            } else {
+              currentMessageId = event.properties.part.messageID;
+              process.stdout.write('\n\n' + event.properties.part.text);
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    }
 
-// config model - view or set model/provider
-const providerOption = Options.text('provider').pipe(Options.withAlias('p'), Options.optional);
-const modelOption = Options.text('model').pipe(Options.withAlias('m'), Options.optional);
+    console.log('\n');
+  } catch (e: any) {
+    if (e.name === 'InvalidProviderError') {
+      console.error(`Error: Unknown provider "${e.providerId}"`);
+      console.error(`Available providers: ${e.availableProviders.join(', ')}`);
+      process.exit(1);
+    } else if (e.name === 'InvalidModelError') {
+      console.error(`Error: Unknown model "${e.modelId}" for provider "${e.providerId}"`);
+      console.error(`Available models: ${e.availableModels.join(', ')}`);
+      process.exit(1);
+    } else if (e.name === 'ProviderNotConnectedError') {
+      console.error(`Error: Provider "${e.providerId}" is not connected`);
+      console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
+      console.error(`Run "opencode auth" to configure provider credentials.`);
+      process.exit(1);
+    }
+    throw e;
+  }
+};
 
-const configModelCommand = Command.make(
-	'model',
-	{ provider: providerOption, model: modelOption },
-	({ provider, model }) =>
-		Effect.gen(function* () {
-			const config = yield* ConfigService;
+const handleConfigModelCommand = async (args: string[], config: ConfigService): Promise<void> => {
+  let provider: string | undefined;
+  let model: string | undefined;
 
-			// If both options provided, update the config
-			if (provider._tag === 'Some' && model._tag === 'Some') {
-				const result = yield* config.updateModel({
-					provider: provider.value,
-					model: model.value
-				});
-				console.log(`Updated model configuration:`);
-				console.log(`  Provider: ${result.provider}`);
-				console.log(`  Model: ${result.model}`);
-			} else if (provider._tag === 'Some' || model._tag === 'Some') {
-				// If only one is provided, show an error
-				console.error('Error: Both --provider and --model must be specified together');
-				process.exit(1);
-			} else {
-				// No options, show current values
-				const current = yield* config.getModel();
-				console.log(`Current model configuration:`);
-				console.log(`  Provider: ${current.provider}`);
-				console.log(`  Model: ${current.model}`);
-			}
-		}).pipe(Effect.provide(programLayer))
-);
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--provider' || args[i] === '-p') {
+      provider = args[i + 1];
+      i++;
+    } else if (args[i] === '--model' || args[i] === '-m') {
+      model = args[i + 1];
+      i++;
+    }
+  }
 
-// config repos list - list all repos
-const configReposListCommand = Command.make('list', {}, () =>
-	Effect.gen(function* () {
-		const config = yield* ConfigService;
-		const repos = yield* config.getRepos();
+  if (provider && model) {
+    const result = await config.updateModel({ provider, model });
+    console.log(`Updated model configuration:`);
+    console.log(`  Provider: ${result.provider}`);
+    console.log(`  Model: ${result.model}`);
+  } else if (provider || model) {
+    console.error('Error: Both --provider and --model must be specified together');
+    process.exit(1);
+  } else {
+    const current = await config.getModel();
+    console.log(`Current model configuration:`);
+    console.log(`  Provider: ${current.provider}`);
+    console.log(`  Model: ${current.model}`);
+  }
+};
 
-		if (repos.length === 0) {
-			console.log('No repos configured.');
-			return;
-		}
+const handleConfigReposListCommand = async (config: ConfigService): Promise<void> => {
+  const repos = await config.getRepos();
 
-		console.log('Configured repos:\n');
-		for (const repo of repos) {
-			console.log(`  ${repo.name}`);
-			console.log(`    URL: ${repo.url}`);
-			console.log(`    Branch: ${repo.branch}`);
-			if (repo.specialNotes) {
-				console.log(`    Notes: ${repo.specialNotes}`);
-			}
-			console.log();
-		}
-	}).pipe(Effect.provide(programLayer))
-);
+  if (repos.length === 0) {
+    console.log('No repos configured.');
+    return;
+  }
 
-// config repos add - add a new repo
-const repoNameOption = Options.text('name').pipe(Options.withAlias('n'));
-const repoUrlOption = Options.text('url').pipe(Options.withAlias('u'));
-const repoBranchOption = Options.text('branch').pipe(
-	Options.withAlias('b'),
-	Options.withDefault('main')
-);
-const repoNotesOption = Options.text('notes').pipe(Options.optional);
+  console.log('Configured repos:\n');
+  for (const repo of repos) {
+    console.log(`  ${repo.name}`);
+    console.log(`    URL: ${repo.url}`);
+    console.log(`    Branch: ${repo.branch}`);
+    if (repo.specialNotes) {
+      console.log(`    Notes: ${repo.specialNotes}`);
+    }
+    console.log();
+  }
+};
 
-const configReposAddCommand = Command.make(
-	'add',
-	{
-		name: repoNameOption.pipe(Options.optional),
-		url: repoUrlOption.pipe(Options.optional),
-		branch: repoBranchOption,
-		notes: repoNotesOption
-	},
-	({ name, url, branch, notes }) =>
-		Effect.gen(function* () {
-			const config = yield* ConfigService;
+const handleConfigReposAddCommand = async (args: string[], config: ConfigService): Promise<void> => {
+  let name = '';
+  let url = '';
+  let branch = 'main';
+  let notes = '';
 
-			let repoName: string;
-			if (name._tag === 'Some') {
-				repoName = name.value;
-			} else {
-				repoName = yield* askText('Enter repo name: ');
-			}
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--name' || args[i] === '-n') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --name requires a value');
+        process.exit(1);
+      }
+      name = value;
+      i++;
+    } else if (args[i] === '--url' || args[i] === '-u') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --url requires a value');
+        process.exit(1);
+      }
+      url = value;
+      i++;
+    } else if (args[i] === '--branch' || args[i] === '-b') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --branch requires a value');
+        process.exit(1);
+      }
+      branch = value;
+      i++;
+    } else if (args[i] === '--notes') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --notes requires a value');
+        process.exit(1);
+      }
+      notes = value;
+      i++;
+    }
+  }
 
-			if (!repoName) {
-				console.log('No repo name provided.');
-				return;
-			}
+  let repoName: string;
+  if (name) {
+    repoName = name;
+  } else {
+    repoName = await askText('Enter repo name: ');
+  }
 
-			let repoUrl: string;
-			if (url._tag === 'Some') {
-				repoUrl = url.value;
-			} else {
-				repoUrl = yield* askText('Enter repo URL: ');
-			}
+  if (!repoName) {
+    console.log('No repo name provided.');
+    return;
+  }
 
-			if (!repoUrl) {
-				console.log('No repo URL provided.');
-				return;
-			}
+  let repoUrl: string;
+  if (url) {
+    repoUrl = url;
+  } else {
+    repoUrl = await askText('Enter repo URL: ');
+  }
 
-			const repo = {
-				name: repoName,
-				url: repoUrl,
-				branch,
-				...(notes._tag === 'Some' ? { specialNotes: notes.value } : {})
-			};
+  if (!repoUrl) {
+    console.log('No repo URL provided.');
+    return;
+  }
 
-			yield* config.addRepo(repo);
-			console.log(`Added repo "${repoName}":`);
-			console.log(`  URL: ${repoUrl}`);
-			console.log(`  Branch: ${branch}`);
-			if (notes._tag === 'Some') {
-				console.log(`  Notes: ${notes.value}`);
-			}
-		}).pipe(
-			Effect.catchTag('ConfigError', (e) =>
-				Effect.sync(() => {
-					console.error(`Error: ${e.message}`);
-					process.exit(1);
-				})
-			),
-			Effect.provide(programLayer)
-		)
-);
+  const repo = {
+    name: repoName,
+    url: repoUrl,
+    branch,
+    ...(notes ? { specialNotes: notes } : {})
+  };
 
-// config repos clear - clear all downloaded repos
-const askConfirmation = (question: string): Effect.Effect<boolean> =>
-	Effect.async<boolean>((resume) => {
-		const rl = readline.createInterface({
-			input: process.stdin,
-			output: process.stdout
-		});
+  try {
+    await config.addRepo(repo);
+    console.log(`Added repo "${repoName}":`);
+    console.log(`  URL: ${repoUrl}`);
+    console.log(`  Branch: ${branch}`);
+    if (notes) {
+      console.log(`  Notes: ${notes}`);
+    }
+  } catch (e: any) {
+    console.error(`Error: ${e.message}`);
+    process.exit(1);
+  }
+};
 
-		rl.question(question, (answer) => {
-			rl.close();
-			const normalized = answer.toLowerCase().trim();
-			resume(Effect.succeed(normalized === 'y' || normalized === 'yes'));
-		});
-	});
+const handleConfigReposRemoveCommand = async (args: string[], config: ConfigService): Promise<void> => {
+  let name = '';
 
-const askText = (question: string): Effect.Effect<string> =>
-	Effect.async<string>((resume) => {
-		const rl = readline.createInterface({
-			input: process.stdin,
-			output: process.stdout
-		});
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--name' || args[i] === '-n') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) {
+        console.error('Error: --name requires a value');
+        process.exit(1);
+      }
+      name = value;
+      i++;
+    }
+  }
 
-		rl.question(question, (answer) => {
-			rl.close();
-			resume(Effect.succeed(answer.trim()));
-		});
-	});
+  let repoName: string;
+  if (name) {
+    repoName = name;
+  } else {
+    repoName = await askText('Enter repo name to remove: ');
+  }
 
-const configReposRemoveCommand = Command.make(
-	'remove',
-	{ name: repoNameOption.pipe(Options.optional) },
-	({ name }) =>
-		Effect.gen(function* () {
-			const config = yield* ConfigService;
+  if (!repoName) {
+    console.log('No repo name provided.');
+    return;
+  }
 
-			let repoName: string;
-			if (name._tag === 'Some') {
-				repoName = name.value;
-			} else {
-				repoName = yield* askText('Enter repo name to remove: ');
-			}
+  const repos = await config.getRepos();
+  const exists = repos.find((r) => r.name === repoName);
+  if (!exists) {
+    console.error(`Error: Repo "${repoName}" not found.`);
+    process.exit(1);
+  }
 
-			if (!repoName) {
-				console.log('No repo name provided.');
-				return;
-			}
+  const confirmed = await askConfirmation(`Are you sure you want to remove repo "${repoName}" from config? (y/N): `);
 
-			// Check if repo exists
-			const repos = yield* config.getRepos();
-			const exists = repos.find((r) => r.name === repoName);
-			if (!exists) {
-				console.error(`Error: Repo "${repoName}" not found.`);
-				process.exit(1);
-			}
+  if (!confirmed) {
+    console.log('Aborted.');
+    return;
+  }
 
-			const confirmed = yield* askConfirmation(
-				`Are you sure you want to remove repo "${repoName}" from config? (y/N): `
-			);
+  try {
+    await config.removeRepo(repoName);
+    console.log(`Removed repo "${repoName}".`);
+  } catch (e: any) {
+    console.error(`Error: ${e.message}`);
+    process.exit(1);
+  }
+};
 
-			if (!confirmed) {
-				console.log('Aborted.');
-				return;
-			}
+const handleConfigReposClearCommand = async (config: ConfigService): Promise<void> => {
+  const reposDir = await config.getReposDirectory();
 
-			yield* config.removeRepo(repoName);
-			console.log(`Removed repo "${repoName}".`);
-		}).pipe(
-			Effect.catchTag('ConfigError', (e) =>
-				Effect.sync(() => {
-					console.error(`Error: ${e.message}`);
-					process.exit(1);
-				})
-			),
-			Effect.provide(programLayer)
-		)
-);
+  // Check if repos directory exists
+  const exists = await directoryExists(reposDir);
 
-const configReposClearCommand = Command.make('clear', {}, () =>
-	Effect.gen(function* () {
-		const config = yield* ConfigService;
-		const fs = yield* FileSystem.FileSystem;
+  if (!exists) {
+    console.log('Repos directory does not exist. Nothing to clear.');
+    return;
+  }
 
-		const reposDir = yield* config.getReposDirectory();
+  // List all directories in the repos directory
+  const entries = await fs.readdir(reposDir);
+  const repoPaths: string[] = [];
 
-		// Check if repos directory exists
-		const exists = yield* fs.exists(reposDir);
-		if (!exists) {
-			console.log('Repos directory does not exist. Nothing to clear.');
-			return;
-		}
+  for (const entry of entries) {
+    const fullPath = `${reposDir}/${entry}`;
+    const stat = await fs.stat(fullPath);
+    if (stat.isDirectory()) {
+      repoPaths.push(fullPath);
+    }
+  }
 
-		// List all directories in the repos directory
-		const entries = yield* fs.readDirectory(reposDir);
-		const repoPaths: string[] = [];
+  if (repoPaths.length === 0) {
+    console.log('No repos found in the repos directory. Nothing to clear.');
+    return;
+  }
 
-		for (const entry of entries) {
-			const fullPath = `${reposDir}/${entry}`;
-			const stat = yield* fs.stat(fullPath);
-			if (stat.type === 'Directory') {
-				repoPaths.push(fullPath);
-			}
-		}
+  console.log('The following repos will be deleted:\n');
+  for (const repoPath of repoPaths) {
+    console.log(`  ${repoPath}`);
+  }
+  console.log();
 
-		if (repoPaths.length === 0) {
-			console.log('No repos found in the repos directory. Nothing to clear.');
-			return;
-		}
+  const confirmed = await askConfirmation('Are you sure you want to delete these repos? (y/N): ');
 
-		console.log('The following repos will be deleted:\n');
-		for (const repoPath of repoPaths) {
-			console.log(`  ${repoPath}`);
-		}
-		console.log();
+  if (!confirmed) {
+    console.log('Aborted.');
+    return;
+  }
 
-		const confirmed = yield* askConfirmation(
-			'Are you sure you want to delete these repos? (y/N): '
-		);
+  for (const repoPath of repoPaths) {
+    await fs.rm(repoPath, { recursive: true });
+    console.log(`Deleted: ${repoPath}`);
+  }
 
-		if (!confirmed) {
-			console.log('Aborted.');
-			return;
-		}
+  console.log('\nAll repos have been cleared.');
+};
 
-		for (const repoPath of repoPaths) {
-			yield* fs.remove(repoPath, { recursive: true });
-			console.log(`Deleted: ${repoPath}`);
-		}
+const handleConfigCommand = async (args: string[], config: ConfigService): Promise<void> => {
+  if (args.length === 0) {
+    const configPath = config.getConfigPath();
+    console.log(`Config file: ${configPath}`);
+    console.log('');
+    console.log('Usage: btca config <command>');
+    console.log('');
+    console.log('Commands:');
+    console.log('  model   View or set the model and provider');
+    console.log('  repos   Manage configured repos');
+    return;
+  }
 
-		console.log('\nAll repos have been cleared.');
-	}).pipe(Effect.provide(programLayer))
-);
+  const subcommand = args[0];
+  const subArgs = args.slice(1);
 
-// config repos - parent command for repo subcommands
-const configReposCommand = Command.make('repos', {}, () =>
-	Effect.sync(() => {
-		console.log('Usage: btca config repos <command>');
-		console.log('');
-		console.log('Commands:');
-		console.log('  list    List all configured repos');
-		console.log('  add     Add a new repo');
-		console.log('  remove  Remove a configured repo');
-		console.log('  clear   Clear all downloaded repos');
-	})
-).pipe(
-	Command.withSubcommands([
-		configReposListCommand,
-		configReposAddCommand,
-		configReposRemoveCommand,
-		configReposClearCommand
-	])
-);
+  switch (subcommand) {
+    case 'model':
+      await handleConfigModelCommand(subArgs, config);
+      break;
+    case 'repos':
+      if (subArgs.length === 0) {
+        console.log('Usage: btca config repos <command>');
+        console.log('');
+        console.log('Commands:');
+        console.log('  list    List all configured repos');
+        console.log('  add     Add a new repo');
+        console.log('  remove  Remove a configured repo');
+        console.log('  clear   Clear all downloaded repos');
+        return;
+      }
+      const reposSubcommand = subArgs[0];
+      const reposSubArgs = subArgs.slice(1);
+      switch (reposSubcommand) {
+        case 'list':
+          await handleConfigReposListCommand(config);
+          break;
+        case 'add':
+          await handleConfigReposAddCommand(reposSubArgs, config);
+          break;
+        case 'remove':
+          await handleConfigReposRemoveCommand(reposSubArgs, config);
+          break;
+        case 'clear':
+          await handleConfigReposClearCommand(config);
+          break;
+        default:
+          console.error(`Unknown repos subcommand: ${reposSubcommand}`);
+          process.exit(1);
+      }
+      break;
+    default:
+      console.error(`Unknown config subcommand: ${subcommand}`);
+      process.exit(1);
+  }
+};
 
-// config - parent command
-const configCommand = Command.make('config', {}, () =>
-	Effect.gen(function* () {
-		const config = yield* ConfigService;
-		const configPath = yield* config.getConfigPath();
+export class CliService {
+  private oc: OcService;
+  private config: ConfigService;
 
-		console.log(`Config file: ${configPath}`);
-		console.log('');
-		console.log('Usage: btca config <command>');
-		console.log('');
-		console.log('Commands:');
-		console.log('  model   View or set the model and provider');
-		console.log('  repos   Manage configured repos');
-	}).pipe(Effect.provide(programLayer))
-).pipe(Command.withSubcommands([configModelCommand, configReposCommand]));
+  constructor(oc: OcService, config: ConfigService) {
+    this.oc = oc;
+    this.config = config;
+  }
 
-// === Main Command ===
-const mainCommand = Command.make('btca', {}, () =>
-	Effect.sync(() => {
-		console.log(`btca v${VERSION}. run btca --help for more information.`);
-	})
-).pipe(
-	Command.withSubcommands([askCommand, configCommand])
-);
+  async run(args: string[]): Promise<void> {
+    if (args.length === 0) {
+      console.log(`btca v${VERSION}. run btca --help for more information.`);
+      return;
+    }
 
-const cliService = Effect.gen(function* () {
-	return {
-		run: (argv: string[]) =>
-			Command.run(mainCommand, {
-				name: 'btca',
-				version: VERSION
-			})(argv)
-	};
-});
+    const command = args[0];
+    const commandArgs = args.slice(1);
 
-export class CliService extends Effect.Service<CliService>()('CliService', {
-	effect: cliService
-}) {}
-
-export { type OcEvent };
+    switch (command) {
+      case 'ask':
+        await handleAskCommand(commandArgs, this.oc);
+        break;
+      case 'config':
+        await handleConfigCommand(commandArgs, this.config);
+        break;
+      case '--help':
+      case '-h':
+        console.log(`btca v${VERSION}`);
+        console.log('');
+        console.log('Usage: btca <command> [options]');
+        console.log('');
+        console.log('Commands:');
+        console.log('  ask     Ask questions about technologies');
+        console.log('  config  Manage configuration');
+        console.log('  --help  Show this help');
+        break;
+      default:
+        console.error(`Unknown command: ${command}`);
+        process.exit(1);
+    }
+  }
+}

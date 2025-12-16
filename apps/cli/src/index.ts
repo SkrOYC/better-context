@@ -1,23 +1,23 @@
-import { BunContext, BunRuntime } from '@effect/platform-bun';
-import { Cause, Effect, Exit } from 'effect';
 import { CliService } from './services/cli.ts';
+import { OcService } from './services/oc.ts';
+import { ConfigService } from './services/config.ts';
 
 // Check if no arguments provided (just "btca" or "bunx btca")
 const hasNoArgs = process.argv.length <= 2;
 
-Effect.gen(function* () {
-	const cli = yield* CliService;
-	const args = hasNoArgs ? ['--help'] : process.argv;
-	yield* cli.run(args);
-}).pipe(
-	Effect.provide(CliService.Default),
-	Effect.provide(BunContext.layer),
-	BunRuntime.runMain({
-		teardown: (exit) => {
-			// Force exit: opencode SDK's server.close() sends SIGTERM but doesn't
-			// wait for child process termination, keeping Node's event loop alive
-			const code = Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause) ? 1 : 0;
-			process.exit(code);
-		}
-	})
-);
+async function main() {
+  try {
+    const config = new ConfigService();
+    await config.init();
+    const oc = new OcService(config);
+    const cli = new CliService(oc, config);
+    const args = hasNoArgs ? ['--help'] : process.argv.slice(2);
+    await cli.run(args);
+    process.exit(0);
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
+}
+
+main();
