@@ -55,11 +55,29 @@ export const services = {
 		),
 
 	// OC operations
-	spawnTui: (tech: string): Promise<void> =>
+	initSession: (tech: string): Promise<string> =>
 		runtime.runPromise(
 			Effect.gen(function* () {
 				const oc = yield* OcService;
-				yield* oc.spawnTui({ tech });
+				return yield* oc.initSession(tech);
+			})
+		),
+
+	sendPrompt: (sessionId: string, text: string, onEvent: (event: OcEvent) => void): Promise<void> =>
+		runtime.runPromise(
+			Effect.gen(function* () {
+				const oc = yield* OcService;
+				const stream = yield* oc.sendPrompt(sessionId, text);
+
+				yield* Stream.runForEach(stream, (event) => Effect.sync(() => onEvent(event)));
+			})
+		),
+
+	closeSession: (sessionId: string): Promise<void> =>
+		runtime.runPromise(
+			Effect.gen(function* () {
+				const oc = yield* OcService;
+				yield* oc.closeSession(sessionId);
 			})
 		),
 
