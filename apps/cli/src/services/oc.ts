@@ -126,6 +126,7 @@ export class OcService {
     const { question, tech } = args;
 
     // Validate tech name first and provide suggestions if not found
+    // This prevents attempting to clone a non-existent repo
     const allRepos = this.configService.getRepos();
     const availableTechs = allRepos.map(repo => repo.name);
     if (!availableTechs.includes(tech)) {

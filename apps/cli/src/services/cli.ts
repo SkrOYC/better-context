@@ -7,6 +7,29 @@ import { ConfigService } from './config.ts';
 import { InvalidTechError } from '../lib/errors.ts';
 import { directoryExists } from '../lib/utils/files.ts';
 
+// Shared error handling function to avoid duplication
+const handleCommandError = (e: any): void => {
+  if (e.name === 'InvalidTechError') {
+    console.error(`Error: ${e.message}`);
+    process.exit(1);
+  } else if (e.name === 'InvalidProviderError') {
+    console.error(`Error: Unknown provider "${e.providerId}"`);
+    console.error(`Available providers: ${e.availableProviders.join(', ')}`);
+    process.exit(1);
+  } else if (e.name === 'InvalidModelError') {
+    console.error(`Error: Unknown model "${e.modelId}" for provider "${e.providerId}"`);
+    console.error(`Available models: ${e.availableModels.join(', ')}`);
+    process.exit(1);
+  } else if (e.name === 'ProviderNotConnectedError') {
+    console.error(`Error: Provider "${e.providerId}" is not connected`);
+    console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
+    console.error(`Run "opencode auth" to configure provider credentials.`);
+    process.exit(1);
+  } else {
+    throw e;
+  }
+};
+
 declare const __VERSION__: string;
 const VERSION: string = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '0.0.0-dev';
 
@@ -41,70 +64,7 @@ const askText = (question: string): Promise<string> => {
   });
 };
 
-const handleAskCommand = async (args: string[], oc: OcService): Promise<void> => {
-  let question: string | undefined;
-  let tech: string | undefined;
 
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--question' || args[i] === '-q') {
-      question = args[i + 1];
-      i++;
-    } else if (args[i] === '--tech' || args[i] === '-t') {
-      tech = args[i + 1];
-      i++;
-    }
-  }
-
-  if (!question || !tech) {
-    console.error('Usage: btca ask --question <question> --tech <tech>');
-    process.exit(1);
-  }
-
-  try {
-    const eventStream = await oc.askQuestion({ tech, question });
-
-    let currentMessageId: string | null = null;
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case 'message.part.updated':
-          if (event.properties.part.type === 'text') {
-            if (currentMessageId === event.properties.part.messageID) {
-              process.stdout.write(event.properties.delta ?? '');
-            } else {
-              currentMessageId = event.properties.part.messageID;
-              process.stdout.write('\n\n' + event.properties.part.text);
-            }
-          }
-          break;
-        default:
-          break;
-      }
-    }
-
-    console.log('\n');
-  } catch (e: any) {
-    if (e.name === 'InvalidTechError') {
-      console.error(`Error: ${e.message}`);
-      process.exit(1);
-    } else if (e.name === 'InvalidProviderError') {
-      console.error(`Error: Unknown provider "${e.providerId}"`);
-      console.error(`Available providers: ${e.availableProviders.join(', ')}`);
-      process.exit(1);
-    } else if (e.name === 'InvalidModelError') {
-      console.error(`Error: Unknown model "${e.modelId}" for provider "${e.providerId}"`);
-      console.error(`Available models: ${e.availableModels.join(', ')}`);
-      process.exit(1);
-    } else if (e.name === 'ProviderNotConnectedError') {
-      console.error(`Error: Provider "${e.providerId}" is not connected`);
-      console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
-      console.error(`Run "opencode auth" to configure provider credentials.`);
-      process.exit(1);
-    } else {
-      throw e;
-    }
-  }
-};
 
 const handleConfigModelCommand = async (args: string[], config: ConfigService): Promise<void> => {
   let provider: string | undefined;
@@ -580,26 +540,7 @@ EXAMPLES:
 
       console.log('\n');
     } catch (e: any) {
-      if (e.name === 'InvalidTechError') {
-        console.error(`Error: ${e.message}`);
-        process.exit(1);
-      } else if (e.name === 'InvalidProviderError') {
-        console.error(`Error: Unknown provider "${e.providerId}"`);
-        console.error(`Available providers: ${e.availableProviders.join(', ')}`);
-        process.exit(1);
-      } else if (e.name === 'InvalidModelError') {
-        console.error(`Error: Unknown model "${e.modelId}" for provider "${e.providerId}"`);
-        console.error(`Available models: ${e.availableModels.join(', ')}`);
-        process.exit(1);
-      } else if (e.name === 'ProviderNotConnectedError') {
-        console.error(`Error: Provider "${e.providerId}" is not connected`);
-        console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
-        console.error(`Run "opencode auth" to configure provider credentials.`);
-        process.exit(1);
-      } else {
-        // For any other errors, we throw to let the top-level error handler manage them
-        throw e;
-      }
+      handleCommandError(e);
     }
   }
 
