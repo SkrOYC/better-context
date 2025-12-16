@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import packageJson from "../package.json";
-import { mkdirSync } from "fs";
+import { mkdir } from "fs/promises";
 
 const VERSION = packageJson.version;
 
@@ -21,13 +21,15 @@ const outputNames: Record<(typeof targets)[number], string> = {
 };
 
 async function main() {
-  mkdirSync("dist", { recursive: true });
+  await mkdir("dist", { recursive: true });
 
-  for (const target of targets) {
+  const buildPromises = targets.map((target) => {
     const outfile = `dist/${outputNames[target]}`;
     console.log(`Building ${target} -> ${outfile} (v${VERSION})`);
-    await $`bun build src/index.ts --compile --target=${target} --outfile=${outfile} --define __VERSION__='"${VERSION}"'`;
-  }
+    return $`bun build src/index.ts --compile --target=${target} --outfile=${outfile} --define __VERSION__='"${VERSION}"'`;
+  });
+
+  await Promise.all(buildPromises);
 
   console.log("Done building all targets");
 }
