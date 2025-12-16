@@ -33,21 +33,11 @@
 		"setup:platforms": "bun install --cpu=x64 --os=darwin && bun install --cpu=x64 --os=linux && bun install --cpu=arm64 --os=linux && bun install --cpu=x64 --os=win32",
 		"build:artifacts": "bun run setup:platforms && bun run build && bun run build:targets",
 		"prepublishOnly": "bun run build:artifacts",
-		"check": "tsgo --noEmit",
-		"prepare": "effect-language-service patch"
+		"check": "tsgo --noEmit"
 	},
 	"devDependencies": {
-		"@effect/cli": "^0.72.1",
-		"@effect/language-service": "^0.62.1",
-		"@effect/platform": "^0.93.5",
-		"@effect/platform-bun": "^0.85.0",
-		"@effect/printer": "^0.47.0",
-		"@effect/printer-ansi": "^0.47.0",
-		"@effect/typeclass": "^0.38.0",
 		"@opencode-ai/sdk": "^1.0.119",
 		"@types/bun": "latest",
-
-		"effect": "^3.19.8",
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
