@@ -5,24 +5,19 @@ import { CliService } from './services/cli.ts';
 // Check if no arguments provided (just "btca" or "bunx btca")
 const hasNoArgs = process.argv.length <= 2;
 
-if (hasNoArgs) {
-	// Launch the TUI
-	import('./tui/index.tsx').then(({ launchTui }) => launchTui());
-} else {
-	// Run the CLI with arguments
-	Effect.gen(function* () {
-		const cli = yield* CliService;
-		yield* cli.run(process.argv);
-	}).pipe(
-		Effect.provide(CliService.Default),
-		Effect.provide(BunContext.layer),
-		BunRuntime.runMain({
-			teardown: (exit) => {
-				// Force exit: opencode SDK's server.close() sends SIGTERM but doesn't
-				// wait for child process termination, keeping Node's event loop alive
-				const code = Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause) ? 1 : 0;
-				process.exit(code);
-			}
-		})
-	);
-}
+Effect.gen(function* () {
+	const cli = yield* CliService;
+	const args = hasNoArgs ? ['--help'] : process.argv;
+	yield* cli.run(args);
+}).pipe(
+	Effect.provide(CliService.Default),
+	Effect.provide(BunContext.layer),
+	BunRuntime.runMain({
+		teardown: (exit) => {
+			// Force exit: opencode SDK's server.close() sends SIGTERM but doesn't
+			// wait for child process termination, keeping Node's event loop alive
+			const code = Exit.isFailure(exit) && !Cause.isInterruptedOnly(exit.cause) ? 1 : 0;
+			process.exit(code);
+		}
+	})
+);
