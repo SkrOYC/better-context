@@ -6,7 +6,6 @@
       "DOM"
     ],
     "jsx": "react-jsx",
-    "jsxImportSource": "@opentui/react",
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
@@ -27,11 +26,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
-    // Effect Language Service
-    "plugins": [
-      {
-        "name": "@effect/language-service"
-      }
-    ]
+
   }
 }

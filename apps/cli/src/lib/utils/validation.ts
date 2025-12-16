@@ -28,27 +28,17 @@ export const validateProviderAndModel = async (
   // Check if provider exists
   const provider = all.find((p) => p.id === providerId);
   if (!provider) {
-    throw new InvalidProviderError({
-      providerId,
-      availableProviders: all.map((p) => p.id),
-    });
+    throw new InvalidProviderError(providerId, all.map((p) => p.id));
   }
 
   // Check if provider is connected (has valid auth)
   if (!connected.includes(providerId)) {
-    throw new ProviderNotConnectedError({
-      providerId,
-      connectedProviders: connected,
-    });
+    throw new ProviderNotConnectedError(providerId, connected);
   }
 
   // Check if model exists for this provider
   const modelIds = Object.keys(provider.models);
   if (!modelIds.includes(modelId)) {
-    throw new InvalidModelError({
-      providerId,
-      modelId,
-      availableModels: modelIds,
-    });
+    throw new InvalidModelError(providerId, modelId, modelIds);
   }
 };

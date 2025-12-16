@@ -41,7 +41,7 @@ export const cloneRepo = async (args: {
 		// Set git config after cloning to avoid author issues during future pull operations
 		await setGitConfig(repoDir);
 	} catch (error) {
-		throw new ConfigError({ message: 'Failed to clone repo', cause: error });
+		throw new ConfigError('Failed to clone repo', error);
 	}
 };
 
@@ -60,6 +60,6 @@ export const pullRepo = async (args: { repoDir: string; branch: string }): Promi
 			onMessage: undefined
 		});
 	} catch (error) {
-		throw new ConfigError({ message: 'Failed to pull repo', cause: error });
+		throw new ConfigError('Failed to pull repo', error);
 	}
 };
