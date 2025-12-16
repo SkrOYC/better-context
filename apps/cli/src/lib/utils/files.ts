@@ -16,10 +16,7 @@ export const directoryExists = async (dir: string): Promise<boolean> => {
     return stat.isDirectory();
   } catch (error) {
     if ((error as any).code === 'ENOENT') return false;
-    throw new ConfigError({
-      message: 'Failed to check directory',
-      cause: error
-    });
+    throw new ConfigError('Failed to check directory', error);
   }
 };
 
@@ -27,9 +24,6 @@ export const ensureDirectory = async (dir: string): Promise<void> => {
   try {
     await fs.mkdir(dir, { recursive: true });
   } catch (error) {
-    throw new ConfigError({
-      message: 'Failed to create directory',
-      cause: error
-    });
+    throw new ConfigError('Failed to create directory', error);
   }
 };

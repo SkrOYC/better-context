@@ -1,34 +1,51 @@
-import { TaggedError } from "effect/Data";
+export class GeneralError extends Error {
+  readonly _tag = "GeneralError";
+  constructor(override readonly message: string, override readonly cause?: unknown) {
+    super(message);
+  }
+}
 
-export class GeneralError extends TaggedError("GeneralError")<{
-  readonly message: string;
-  readonly cause?: unknown;
-}> {}
+export class OcError extends Error {
+  readonly _tag = "OcError";
+  constructor(override readonly message: string, override readonly cause?: unknown) {
+    super(message);
+  }
+}
 
-export class OcError extends TaggedError("OcError")<{
-  readonly message: string;
-  readonly cause?: unknown;
-}> {}
+export class ConfigError extends Error {
+  readonly _tag = "ConfigError";
+  constructor(override readonly message: string, override readonly cause?: unknown) {
+    super(message);
+  }
+}
 
-export class ConfigError extends TaggedError("ConfigError")<{
-  readonly message: string;
-  readonly cause?: unknown;
-}> {}
+export class InvalidProviderError extends Error {
+  readonly _tag = "InvalidProviderError";
+  constructor(
+    readonly providerId: string,
+    readonly availableProviders: string[]
+  ) {
+    super(`Invalid provider: ${providerId}`);
+  }
+}
 
-export class InvalidProviderError extends TaggedError("InvalidProviderError")<{
-  readonly providerId: string;
-  readonly availableProviders: string[];
-}> {}
+export class InvalidModelError extends Error {
+  readonly _tag = "InvalidModelError";
+  constructor(
+    readonly providerId: string,
+    readonly modelId: string,
+    readonly availableModels: string[]
+  ) {
+    super(`Invalid model: ${modelId} for provider ${providerId}`);
+  }
+}
 
-export class InvalidModelError extends TaggedError("InvalidModelError")<{
-  readonly providerId: string;
-  readonly modelId: string;
-  readonly availableModels: string[];
-}> {}
-
-export class ProviderNotConnectedError extends TaggedError(
-  "ProviderNotConnectedError"
-)<{
-  readonly providerId: string;
-  readonly connectedProviders: string[];
-}> {}
+export class ProviderNotConnectedError extends Error {
+  readonly _tag = "ProviderNotConnectedError";
+  constructor(
+    readonly providerId: string,
+    readonly connectedProviders: string[]
+  ) {
+    super(`Provider not connected: ${providerId}`);
+  }
+}

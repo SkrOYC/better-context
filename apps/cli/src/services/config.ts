@@ -72,12 +72,9 @@ const writeConfig = async (config: Config): Promise<void> => {
 
   try {
     await fs.writeFile(configPath, JSON.stringify(configToWrite, null, 2));
-  } catch (error) {
-    throw new ConfigError({
-      message: 'Failed to write config',
-      cause: error
-    });
-  }
+   } catch (error) {
+     throw new ConfigError("Invalid config file format", error);
+   }
 };
 
 const OPENCODE_CONFIG = (args: {
@@ -174,12 +171,9 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
       config,
       configPath
     };
-  } catch (error) {
-    throw new ConfigError({
-      message: 'Failed to load config',
-      cause: error
-    });
-  }
+   } catch (error) {
+     throw new ConfigError('Failed to load config', error);
+   }
 };
 
 export class ConfigService {
@@ -203,7 +197,7 @@ export class ConfigService {
   async cloneOrUpdateOneRepoLocally(repoName: string, options: { suppressLogs: boolean }): Promise<Repo> {
     const repo = this.config.repos.find((repo) => repo.name === repoName);
     if (!repo) {
-      throw new ConfigError({ message: 'Repo not found' });
+      throw new ConfigError('Repo not found');
     }
     const repoDir = path.join(this.config.reposDirectory, repo.name);
     const branch = repo.branch ?? 'main';
@@ -251,7 +245,7 @@ export class ConfigService {
   async addRepo(repo: Repo): Promise<Repo> {
     const existing = this.config.repos.find((r) => r.name === repo.name);
     if (existing) {
-      throw new ConfigError({ message: `Repo "${repo.name}" already exists` });
+      throw new ConfigError(`Repo "${repo.name}" already exists`);
     }
     this.config = { ...this.config, repos: [...this.config.repos, repo] };
     await writeConfig(this.config);
@@ -261,7 +255,7 @@ export class ConfigService {
   async removeRepo(repoName: string): Promise<void> {
     const existing = this.config.repos.find((r) => r.name === repoName);
     if (!existing) {
-      throw new ConfigError({ message: `Repo "${repoName}" not found` });
+      throw new ConfigError(`Repo "${repoName}" not found`);
     }
     this.config = { ...this.config, repos: this.config.repos.filter((r) => r.name !== repoName) };
     await writeConfig(this.config);

@@ -26,11 +26,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
-    // Effect Language Service
-    "plugins": [
-      {
-        "name": "@effect/language-service"
-      }
-    ]
+
   }
 }

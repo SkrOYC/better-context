@@ -24,10 +24,7 @@ export class OcService {
     const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
 
     if (!configObject) {
-      throw new OcError({
-        message: 'Config not found for tech',
-        cause: null
-      });
+      throw new OcError('Config not found for tech', null);
     }
 
     while (portOffset < maxInstances) {
@@ -41,17 +38,11 @@ export class OcService {
         if (err instanceof Error && err.message.includes('port')) {
           portOffset++;
         } else {
-          throw new OcError({
-            message: 'FAILED TO CREATE OPENCODE CLIENT',
-            cause: err
-          });
+          throw new OcError('FAILED TO CREATE OPENCODE CLIENT', err);
         }
       }
     }
-    throw new OcError({
-      message: 'FAILED TO CREATE OPENCODE CLIENT - all ports exhausted',
-      cause: null
-    });
+    throw new OcError('FAILED TO CREATE OPENCODE CLIENT - all ports exhausted', null);
   }
 
   async initSession(tech: string): Promise<string> {
@@ -59,10 +50,7 @@ export class OcService {
     const session = await result.client.session.create();
 
     if (session.error) {
-      throw new OcError({
-        message: 'FAILED TO START OPENCODE SESSION',
-        cause: session.error
-      });
+      throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
     }
 
     const sessionID = session.data.id;
@@ -74,10 +62,7 @@ export class OcService {
   async sendPrompt(sessionId: string, text: string): Promise<AsyncIterable<Event>> {
     const sessionData = this.sessions.get(sessionId);
     if (!sessionData) {
-      throw new OcError({
-        message: 'Session not found',
-        cause: null
-      });
+      throw new OcError('OpenCode SDK not configured', null);
     }
     const { client } = sessionData;
 
@@ -97,10 +82,7 @@ export class OcService {
           if (!('sessionID' in props) || props.sessionID === sessionId) {
             if (event.type === 'session.error') {
               const props = event.properties as { error?: { name?: string } };
-              throw new OcError({
-                message: props.error?.name ?? 'Unknown session error',
-                cause: props.error
-              });
+              throw new OcError(props.error?.name ?? 'Unknown session error', props.error);
             }
             yield event;
           }
@@ -120,7 +102,7 @@ export class OcService {
         parts: [{ type: 'text', text }]
       }
     }).catch((err) => {
-      promptError = new OcError({ message: String(err), cause: err });
+      promptError = new OcError(String(err), err);
     });
 
     return filteredEvents;
@@ -141,15 +123,10 @@ export class OcService {
 
     const result = await this.getOpencodeInstance(tech);
 
-    await validateProviderAndModel(result.client, this.configService.rawConfig().provider, this.configService.rawConfig().model);
-
     const session = await result.client.session.create();
 
     if (session.error) {
-      throw new OcError({
-        message: 'FAILED TO START OPENCODE SESSION',
-        cause: session.error
-      });
+      throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
     }
 
     const sessionID = session.data.id;
@@ -173,10 +150,7 @@ export class OcService {
           if (!('sessionID' in props) || props.sessionID === sessionID) {
             if (event.type === 'session.error') {
               const props = event.properties as { error?: { name?: string } };
-              throw new OcError({
-                message: props.error?.name ?? 'Unknown session error',
-                cause: props.error
-              });
+              throw new OcError(props.error?.name ?? 'Unknown session error', props.error);
             }
             yield event;
           }
@@ -196,7 +170,7 @@ export class OcService {
         parts: [{ type: 'text', text: question }]
       }
     }).catch((err) => {
-      promptError = new OcError({ message: String(err), cause: err });
+      promptError = new OcError(String(err), err);
     });
 
     return filteredEvents;
