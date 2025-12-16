@@ -119,7 +119,7 @@ export class OcService {
   async askQuestion(args: { question: string; tech: string; suppressLogs: boolean }): Promise<AsyncIterable<Event>> {
     const { question, tech, suppressLogs } = args;
 
-    await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs });
+    await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: true });
 
     const result = await this.getOpencodeInstance(tech);
 
