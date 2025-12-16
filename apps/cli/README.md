@@ -11,7 +11,20 @@ bun install
 ## Usage
 
 ```bash
+bun install
+```
+
+## Usage
+
+```bash
 bun run src/index.ts
+```
+
+Or after building:
+
+```bash
+btca ask -t <tech> -q <question>
+btca config
 ```
 
 Or after building:
@@ -40,43 +53,7 @@ Options:
 - `-t, --tech` - The technology/repo to query
 - `-q, --question` - The question to ask
 
-### `btca chat`
 
-Start an interactive TUI chat session.
-
-```bash
-btca chat -t <tech>
-btca chat --tech nextjs
-```
-
-Options:
-
-- `-t, --tech` - The technology/repo to chat about
-
-### `btca serve`
-
-Start an HTTP server to answer questions via API.
-
-```bash
-btca serve
-btca serve -p 3000
-```
-
-Options:
-
-- `-p, --port` - Port to listen on (default: 8080)
-
-Endpoint:
-
-- `POST /question` - Send `{ "tech": "svelte", "question": "..." }` to get answers
-
-### `btca open`
-
-Hold an OpenCode instance in the background for faster subsequent queries.
-
-```bash
-btca open
-```
 
 ### `btca config`
 
@@ -136,8 +113,6 @@ Configuration is stored at `~/.config/btca/btca.json`. The config file includes:
 
 - `promptsDirectory` - Directory for system prompts
 - `reposDirectory` - Directory where repos are cloned
-- `port` - Default server port
-- `maxInstances` - Maximum concurrent OpenCode instances
 - `repos` - Array of configured repositories
 - `model` - AI model to use
 - `provider` - AI provider to use

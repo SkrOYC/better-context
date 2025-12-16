@@ -14,21 +14,7 @@
 			description: 'Ask a single question about a technology and get an answer from its source code.',
 			example: 'btca ask -t svelte -q "How do stores work in Svelte 5?"'
 		},
-		{
-			name: 'btca chat',
-			description: 'Open an interactive TUI session for multi-turn conversations about a technology.',
-			example: 'btca chat -t tailwindcss'
-		},
-		{
-			name: 'btca serve',
-			description: 'Start an HTTP server that exposes a /question endpoint for programmatic access.',
-			example: 'btca serve -p 8080'
-		},
-		{
-			name: 'btca open',
-			description: 'Keep an OpenCode instance running in the background for faster subsequent queries.',
-			example: 'btca open'
-		},
+
 		{
 			name: 'btca config',
 			description: 'Display the path to the config file.',
@@ -53,11 +39,6 @@
 			name: 'btca config repos remove',
 			description: 'Remove a repository from the configuration.',
 			example: 'btca config repos remove -n react'
-		},
-		{
-			name: 'btca config repos clear',
-			description: 'Delete all locally downloaded repositories to free up disk space.',
-			example: 'btca config repos clear'
 		}
 	] as const;
 
