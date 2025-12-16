@@ -11,12 +11,6 @@ bun install
 ## Usage
 
 ```bash
-bun install
-```
-
-## Usage
-
-```bash
 bun run src/index.ts
 ```
 
