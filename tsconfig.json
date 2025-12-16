@@ -6,7 +6,6 @@
       "DOM"
     ],
     "jsx": "react-jsx",
-    "jsxImportSource": "@opentui/react",
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
