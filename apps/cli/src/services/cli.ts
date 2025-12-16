@@ -533,12 +533,20 @@ EXAMPLES:
       .command('clear')
       .description('Clear all downloaded repositories from disk')
       .addHelpText('after', `
-WARNING: This will delete all downloaded repository data from your local machine.
+ WARNING: This will delete all downloaded repository data from your local machine.
 
-EXAMPLE:
-  $ btca config repos clear`)
+ EXAMPLE:
+   $ btca config repos clear`)
       .action(async () => {
         await this.handleConfigReposClearCommand();
+      });
+    
+    // List command
+    this.program
+      .command('list')
+      .description('List all configured technologies')
+      .action(async () => {
+        await this.handleListCommand();
       });
   }
 
@@ -715,6 +723,20 @@ EXAMPLE:
     }
 
     console.log('\nAll repos have been cleared.');
+  }
+
+  private async handleListCommand(): Promise<void> {
+    const repos = await this.config.getRepos();
+    
+    if (repos.length === 0) {
+      console.log('No technologies configured.');
+      return;
+    }
+    
+    // Output each technology name on a separate line (clean and parseable format)
+    for (const repo of repos) {
+      console.log(repo.name);
+    }
   }
 
   async run(args: string[]): Promise<void> {
