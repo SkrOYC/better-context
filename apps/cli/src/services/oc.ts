@@ -4,28 +4,12 @@ import {
 	type Event,
 	type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
-import { spawn } from 'bun';
 import { Deferred, Duration, Effect, Ref, Stream } from 'effect';
 import { ConfigService } from './config.ts';
 import { OcError } from '../lib/errors.ts';
 import { validateProviderAndModel } from '../lib/utils/validation.ts';
 
-const spawnOpencodeTui = async (args: {
-	config: OpenCodeConfig;
-	rawConfig: { provider: string; model: string };
-}) => {
-	const proc = spawn(['opencode', `--model=${args.rawConfig.provider}/${args.rawConfig.model}`], {
-		stdin: 'inherit',
-		stdout: 'inherit',
-		stderr: 'inherit',
-		env: {
-			...process.env,
-			OPENCODE_CONFIG_CONTENT: JSON.stringify(args.config)
-		}
-	});
 
-	await proc.exited;
-};
 
 export type { Event as OcEvent };
 
@@ -174,13 +158,12 @@ const ocService = Effect.gen(function* () {
 
 				yield* config.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: false });
 
-				const configObject = yield* config.getOpenCodeConfig({
-					repoName: tech
-				});
-
-				yield* Effect.tryPromise({
-					try: () => spawnOpencodeTui({ config: configObject, rawConfig }),
-					catch: (err) => new OcError({ message: 'TUI exited with error', cause: err })
+				// Launch the internal TUI by importing and calling launchTui
+				const tuiModule = yield* Effect.promise(() => import('../tui/index.tsx'));
+				yield* Effect.promise(async () => {
+					await tuiModule.launchTui();
+					// Keep the effect running, as the TUI exit is handled by process termination (Ctrl+C).
+					return new Promise<void>(() => {});
 				});
 			}),
 		initSession: (tech: string) =>
