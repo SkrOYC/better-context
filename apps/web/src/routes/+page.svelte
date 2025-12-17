@@ -92,7 +92,10 @@ btca`;
 			Quick commands
 		</h2>
 		<p class="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-			The CLI currently ships the <code class="rounded bg-neutral-900/5 px-1 py-0.5 text-xs dark:bg-white/10">ask</code> and <code class="rounded bg-neutral-900/5 px-1 py-0.5 text-xs dark:bg-white/10">config</code> subcommands.
+			The CLI currently ships the <code
+				class="rounded bg-neutral-900/5 px-1 py-0.5 text-xs dark:bg-white/10">ask</code
+			>
+			and <code class="rounded bg-neutral-900/5 px-1 py-0.5 text-xs dark:bg-white/10">config</code> subcommands.
 		</p>
 
 		<div class="mt-4">

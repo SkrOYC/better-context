@@ -11,7 +11,8 @@
 		},
 		{
 			name: 'btca ask',
-			description: 'Ask a single question about a technology and get an answer from its source code.',
+			description:
+				'Ask a single question about a technology and get an answer from its source code.',
 			example: 'btca ask -t svelte -q "How do stores work in Svelte 5?"'
 		},
 

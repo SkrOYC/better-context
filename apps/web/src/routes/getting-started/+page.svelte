@@ -230,9 +230,8 @@ Available <tech>: svelte, tailwindcss`;
 			Using btca
 		</h2>
 		<p class="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-			Use <code
-				class="rounded bg-neutral-900/5 px-1 py-0.5 text-xs dark:bg-white/10">ask</code
-			> to get answers from technology source code.
+			Use <code class="rounded bg-neutral-900/5 px-1 py-0.5 text-xs dark:bg-white/10">ask</code> to get
+			answers from technology source code.
 		</p>
 
 		<div class="mt-4">

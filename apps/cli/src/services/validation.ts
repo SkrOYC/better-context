@@ -59,7 +59,7 @@ export class ValidationService {
         // Create temporary OpenCode instance for validation
         const { client, server } = await createOpencode({
           port: 0, // Use random available port
-          timeout: 10000 // 10 second timeout
+          timeout: this.configService.getRequestTimeoutMs() // Configurable timeout
         });
 
         try {

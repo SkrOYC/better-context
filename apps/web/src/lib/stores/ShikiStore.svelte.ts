@@ -3,7 +3,7 @@ import { createHighlighter, type Highlighter } from 'shiki/bundle/web';
 
 class ShikiStore {
 	private highlighterPromise = createHighlighter({
-		themes: ['dark-plus', "light-plus"],
+		themes: ['dark-plus', 'light-plus'],
 		langs: ['bash', 'json']
 	});
 
