@@ -58,6 +58,14 @@ export class Logger {
       await this.log('DEBUG', message);
     }
   }
+
+  async resource(message: string): Promise<void> {
+    await this.log('INFO', `[RESOURCE] ${message}`);
+  }
+
+  async metrics(message: string): Promise<void> {
+    await this.log('INFO', `[METRICS] ${message}`);
+  }
 }
 
 // Create a singleton instance for the application
