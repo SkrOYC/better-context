@@ -1,5 +1,7 @@
 import type { Event } from '@opencode-ai/sdk';
 import type { EventHandler } from '../EventProcessor.ts';
+import type { MessagePartUpdatedEvent } from '../../types/events.ts';
+import { isMessageEvent, isTextMessagePart } from '../../utils/type-guards.ts';
 import { logger } from '../../utils/logger.ts';
 
 export interface MessageEventHandlerOptions {
@@ -8,7 +10,7 @@ export interface MessageEventHandlerOptions {
   chunkSize?: number;
 }
 
-export class MessageEventHandler implements EventHandler<Event> {
+export class MessageEventHandler implements EventHandler<MessagePartUpdatedEvent> {
   private currentMessageId: string | null = null;
   private messageBuffer = new Map<string, { content: string; timestamp: number }>();
   private maxBufferSize = 100; // Maximum number of messages to keep in buffer
@@ -22,15 +24,18 @@ export class MessageEventHandler implements EventHandler<Event> {
     };
   }
 
-  canHandle(event: Event): boolean {
-    return event.type === 'message.part.updated';
+  canHandle(event: Event): event is MessagePartUpdatedEvent {
+    return isMessageEvent(event);
   }
 
-  async handle(event: Event): Promise<void> {
+  async handle(event: MessagePartUpdatedEvent): Promise<void> {
     try {
-      const part = (event.properties as any).part;
-      if (!part || part.type !== 'text') {
-        return; // Only handle text parts
+      // Type-safe access to event properties
+      const part = event.properties.part;
+
+      // Only handle text message parts
+      if (!isTextMessagePart(part)) {
+        return;
       }
 
       const messageId = part.messageID;

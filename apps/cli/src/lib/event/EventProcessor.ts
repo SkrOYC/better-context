@@ -10,7 +10,7 @@ export interface EventProcessingOptions {
 }
 
 export interface EventHandler<T extends Event = Event> {
-  canHandle(event: Event): boolean;
+  canHandle(event: Event): event is T;
   handle(event: T): Promise<void> | void;
   priority?: number; // Lower number = higher priority
 }

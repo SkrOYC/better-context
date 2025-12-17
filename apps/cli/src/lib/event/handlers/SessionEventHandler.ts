@@ -1,5 +1,7 @@
 import type { Event } from '@opencode-ai/sdk';
 import type { EventHandler } from '../EventProcessor.ts';
+import type { SessionErrorEvent, SessionIdleEvent, EventWithSessionId } from '../../types/events.ts';
+import { isSessionErrorEvent, isSessionIdleEvent, hasSessionId } from '../../utils/type-guards.ts';
 import { logger } from '../../utils/logger.ts';
 import { OcError } from '../../errors.ts';
 
@@ -9,34 +11,35 @@ export interface SessionEventHandlerOptions {
   onSessionIdle?: (sessionId: string) => void;
 }
 
-export class SessionEventHandler implements EventHandler<Event> {
+export class SessionEventHandler implements EventHandler<SessionErrorEvent | SessionIdleEvent> {
   private options: SessionEventHandlerOptions;
 
   constructor(options: SessionEventHandlerOptions = {}) {
     this.options = options;
   }
 
-  canHandle(event: Event): boolean {
-    return event.type === 'session.error' || event.type === 'session.idle';
+  canHandle(event: Event): event is SessionErrorEvent | SessionIdleEvent {
+    return isSessionErrorEvent(event) || isSessionIdleEvent(event);
   }
 
-  async handle(event: Event): Promise<void> {
+  async handle(event: SessionErrorEvent | SessionIdleEvent): Promise<void> {
     try {
-      const sessionId = (event.properties as any).sessionID;
-      if (!sessionId) {
+      // Type-safe session ID extraction
+      if (!hasSessionId(event)) {
         logger.warn(`Session event missing sessionID: ${event.type}`);
         return;
       }
 
-      switch (event.type) {
-        case 'session.error':
-          await this.handleSessionError(event, sessionId);
-          break;
-        case 'session.idle':
-          await this.handleSessionIdle(event, sessionId);
-          break;
-        default:
-          logger.warn(`Unhandled session event type: ${event.type}`);
+      const sessionId = event.properties.sessionID;
+
+      // Discriminated union handling
+      if (isSessionErrorEvent(event)) {
+        await this.handleSessionError(event, sessionId);
+      } else if (isSessionIdleEvent(event)) {
+        await this.handleSessionIdle(event, sessionId);
+      } else {
+        // This should never happen due to type guards, but handle gracefully
+        logger.warn(`Unhandled session event type: ${(event as any).type || 'unknown'}`);
       }
     } catch (error) {
       logger.error(`Error handling session event: ${error}`);
@@ -44,12 +47,13 @@ export class SessionEventHandler implements EventHandler<Event> {
     }
   }
 
-  private async handleSessionError(event: Event, sessionId: string): Promise<void> {
-    const props = event.properties as { error?: { name?: string; message?: string } };
-    const errorName = props.error?.name ?? 'Unknown session error';
-    const errorMessage = props.error?.message ?? 'No error message provided';
+  private async handleSessionError(event: SessionErrorEvent, sessionId: string): Promise<void> {
+    // Type-safe access to error properties
+    const errorDetails = event.properties.error;
+    const errorName = errorDetails?.name ?? 'Unknown session error';
+    const errorMessage = errorDetails?.message ?? 'No error message provided';
 
-    const sessionError = new OcError(`SESSION ERROR [${sessionId}]: ${errorName} - ${errorMessage}`, props.error);
+    const sessionError = new OcError(`SESSION ERROR [${sessionId}]: ${errorName} - ${errorMessage}`, errorDetails);
 
     logger.error(`Session error for ${sessionId}: ${errorName} - ${errorMessage}`);
 
@@ -66,7 +70,7 @@ export class SessionEventHandler implements EventHandler<Event> {
     throw sessionError;
   }
 
-  private async handleSessionIdle(event: Event, sessionId: string): Promise<void> {
+  private async handleSessionIdle(event: SessionIdleEvent, sessionId: string): Promise<void> {
     logger.info(`Session ${sessionId} completed (idle state)`);
 
     // Call completion callback if provided
