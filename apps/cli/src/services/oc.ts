@@ -62,15 +62,380 @@ export function isRetryableError(error: Error): boolean {
   return true;
 }
 
+interface PooledInstance {
+  client: OpencodeClient;
+  server: { close: () => void; url: string };
+  tech: string;
+  createdAt: Date;
+  lastUsed: Date;
+  inUse: boolean;
+  sessionCount: number;
+}
+
+export class ResourcePool {
+  private pool = new Map<string, PooledInstance[]>();
+  private maxInstancesPerTech: number;
+  private maxTotalInstances: number;
+  private instanceTimeoutMs: number;
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  constructor(
+    maxInstancesPerTech: number = 3,
+    maxTotalInstances: number = 10,
+    instanceTimeoutMs: number = 30 * 60 * 1000 // 30 minutes
+  ) {
+    this.maxInstancesPerTech = maxInstancesPerTech;
+    this.maxTotalInstances = maxTotalInstances;
+    this.instanceTimeoutMs = instanceTimeoutMs;
+
+    // Start cleanup interval to remove unused instances
+    this.startCleanupInterval();
+  }
+
+  private startCleanupInterval(): void {
+    // Clean up every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.performCleanup();
+    }, 5 * 60 * 1000);
+  }
+
+  private performCleanup(): void {
+    const now = Date.now();
+    for (const [tech, instances] of this.pool.entries()) {
+      const instancesToKeep = instances.filter(instance =>
+        instance.inUse ||
+        (now - instance.lastUsed.getTime()) < this.instanceTimeoutMs
+      );
+
+      if (instancesToKeep.length !== instances.length) {
+        // Some instances were cleaned up
+        this.pool.set(tech, instancesToKeep);
+
+        const cleanedCount = instances.length - instancesToKeep.length;
+        logger.resource(`Cleaned up ${cleanedCount} unused instances for ${tech}`);
+      }
+    }
+  }
+
+  private getTotalInstances(): number {
+    let total = 0;
+    for (const instances of this.pool.values()) {
+      total += instances.length;
+    }
+    return total;
+  }
+
+  private getAvailableInstance(tech: string): PooledInstance | null {
+    const instances = this.pool.get(tech) || [];
+    return instances.find(instance => !instance.inUse) || null;
+  }
+
+  async acquireInstance(tech: string, configObject: OpenCodeConfig): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
+    // First try to get an existing available instance for this tech
+    let instance = this.getAvailableInstance(tech);
+
+    if (instance) {
+      instance.inUse = true;
+      instance.lastUsed = new Date();
+      instance.sessionCount++;
+      return { client: instance.client, server: instance.server };
+    }
+
+    // Check if we can create a new instance for this tech
+    const techInstances = this.pool.get(tech) || [];
+    if (techInstances.length >= this.maxInstancesPerTech) {
+      throw new OcError(`RESOURCE EXHAUSTION: Maximum instances (${this.maxInstancesPerTech}) reached for technology ${tech}`, null);
+    }
+
+    // Check total instance limit
+    if (this.getTotalInstances() >= this.maxTotalInstances) {
+      throw new OcError(`RESOURCE EXHAUSTION: Maximum total instances (${this.maxTotalInstances}) reached across all technologies`, null);
+    }
+
+    // Create new instance
+    const result = await this.createNewInstance(tech, configObject);
+
+    // Add to pool
+    if (!this.pool.has(tech)) {
+      this.pool.set(tech, []);
+    }
+    this.pool.get(tech)!.push(result);
+
+    await logger.resource(`Created new pooled instance for ${tech}. Total instances: ${this.getTotalInstances()}`);
+    return { client: result.client, server: result.server };
+  }
+
+  private async createNewInstance(tech: string, configObject: OpenCodeConfig): Promise<PooledInstance> {
+    // Use a more sophisticated port allocation strategy
+    const usedPorts = new Set<number>();
+    for (const instances of this.pool.values()) {
+      for (const instance of instances) {
+        const url = new URL(instance.server.url);
+        usedPorts.add(parseInt(url.port));
+      }
+    }
+
+    let port = 3420;
+    while (usedPorts.has(port)) {
+      port++;
+      if (port > 4000) { // Reasonable upper limit
+        throw new OcError('RESOURCE EXHAUSTION: No available ports for new instance', null);
+      }
+    }
+
+    try {
+      const result = await createOpencode({
+        port,
+        config: configObject
+      });
+
+      return {
+        client: result.client,
+        server: result.server,
+        tech,
+        createdAt: new Date(),
+        lastUsed: new Date(),
+        inUse: true,
+        sessionCount: 1
+      };
+    } catch (err) {
+      throw new OcError('FAILED TO CREATE POOLED OPENCODE INSTANCE', err);
+    }
+  }
+
+  releaseInstance(tech: string, client: OpencodeClient): void {
+    const instances = this.pool.get(tech) || [];
+    const instance = instances.find(inst => inst.client === client);
+
+    if (instance) {
+      instance.inUse = false;
+      instance.lastUsed = new Date();
+      instance.sessionCount = Math.max(0, instance.sessionCount - 1);
+    }
+  }
+
+  getPoolMetrics() {
+    const metrics = {
+      totalInstances: this.getTotalInstances(),
+      instancesByTech: {} as Record<string, number>,
+      activeInstances: 0,
+      availableInstances: 0
+    };
+
+    for (const [tech, instances] of this.pool.entries()) {
+      metrics.instancesByTech[tech] = instances.length;
+      for (const instance of instances) {
+        if (instance.inUse) {
+          metrics.activeInstances++;
+        } else {
+          metrics.availableInstances++;
+        }
+      }
+    }
+
+    return metrics;
+  }
+
+  async shutdown(): Promise<void> {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+
+    // Close all instances
+    for (const [tech, instances] of this.pool.entries()) {
+      for (const instance of instances) {
+        try {
+          if (instance.server && typeof instance.server.close === 'function') {
+            instance.server.close();
+          }
+        } catch (error) {
+          // Ignore errors during shutdown
+          await logger.warn(`Error closing pooled instance for ${tech}: ${error}`);
+        }
+      }
+    }
+
+    this.pool.clear();
+    await logger.resource('Resource pool shutdown complete');
+  }
+}
+
+interface SessionInfo {
+  sessionId: string;
+  tech: string;
+  client: OpencodeClient;
+  server: { close: () => void; url: string };
+  createdAt: Date;
+  lastActivity: Date;
+  timeoutId?: NodeJS.Timeout;
+  isActive: boolean;
+}
+
+export class SessionCoordinator {
+  private sessions = new Map<string, SessionInfo>();
+  private techSessionCounts = new Map<string, number>();
+  private resourcePool: ResourcePool;
+  private maxConcurrentSessionsPerTech: number;
+  private maxTotalSessions: number;
+
+  constructor(
+    resourcePool: ResourcePool,
+    maxConcurrentSessionsPerTech: number = 5,
+    maxTotalSessions: number = 20
+  ) {
+    this.resourcePool = resourcePool;
+    this.maxConcurrentSessionsPerTech = maxConcurrentSessionsPerTech;
+    this.maxTotalSessions = maxTotalSessions;
+  }
+
+  canCreateSession(tech: string): { allowed: boolean; reason?: string } {
+    // Check total session limit
+    if (this.sessions.size >= this.maxTotalSessions) {
+      return {
+        allowed: false,
+        reason: `Maximum total sessions (${this.maxTotalSessions}) reached`
+      };
+    }
+
+    // Check per-tech limit
+    const techSessions = this.techSessionCounts.get(tech) || 0;
+    if (techSessions >= this.maxConcurrentSessionsPerTech) {
+      return {
+        allowed: false,
+        reason: `Maximum concurrent sessions (${this.maxConcurrentSessionsPerTech}) reached for ${tech}`
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  registerSession(sessionInfo: Omit<SessionInfo, 'isActive'>): void {
+    const fullSessionInfo: SessionInfo = {
+      ...sessionInfo,
+      isActive: true
+    };
+
+    this.sessions.set(sessionInfo.sessionId, fullSessionInfo);
+
+    // Update tech session count
+    const currentCount = this.techSessionCounts.get(sessionInfo.tech) || 0;
+    this.techSessionCounts.set(sessionInfo.tech, currentCount + 1);
+
+    logger.resource(`Session ${sessionInfo.sessionId} registered for ${sessionInfo.tech}. Active sessions: ${this.sessions.size}`);
+  }
+
+  getSession(sessionId: string): SessionInfo | undefined {
+    return this.sessions.get(sessionId);
+  }
+
+  updateSessionActivity(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.lastActivity = new Date();
+    }
+  }
+
+  async cleanupSession(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    // Mark as inactive
+    session.isActive = false;
+
+    // Clear timeout if exists
+    if (session.timeoutId) {
+      clearTimeout(session.timeoutId);
+    }
+
+    // Release instance back to pool
+    this.resourcePool.releaseInstance(session.tech, session.client);
+
+    // Update tech session count
+    const currentCount = this.techSessionCounts.get(session.tech) || 0;
+    this.techSessionCounts.set(session.tech, Math.max(0, currentCount - 1));
+
+    // Remove from tracking
+    this.sessions.delete(sessionId);
+
+    logger.resource(`Session ${sessionId} cleaned up. Remaining active sessions: ${this.sessions.size}`);
+  }
+
+  setSessionTimeout(sessionId: string, timeoutMs: number, cleanupCallback: () => Promise<void>): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    // Clear existing timeout
+    if (session.timeoutId) {
+      clearTimeout(session.timeoutId);
+    }
+
+    // Set new timeout
+    session.timeoutId = setTimeout(async () => {
+      await cleanupCallback();
+    }, timeoutMs);
+
+    session.lastActivity = new Date();
+  }
+
+  async cleanupAllSessions(): Promise<void> {
+    const sessionIds = Array.from(this.sessions.keys());
+    logger.resource(`Cleaning up ${sessionIds.length} active sessions via coordinator`);
+
+    for (const sessionId of sessionIds) {
+      await this.cleanupSession(sessionId);
+    }
+
+    // Reset counters
+    this.techSessionCounts.clear();
+
+    logger.resource('All sessions cleaned up via coordinator');
+  }
+
+  getCoordinatorMetrics() {
+    return {
+      totalSessions: this.sessions.size,
+      activeSessions: Array.from(this.sessions.values()).filter(s => s.isActive).length,
+      sessionsByTech: Object.fromEntries(this.techSessionCounts.entries()),
+      maxConcurrentSessionsPerTech: this.maxConcurrentSessionsPerTech,
+      maxTotalSessions: this.maxTotalSessions
+    };
+  }
+
+  getStaleSessions(timeoutMs: number): string[] {
+    const now = Date.now();
+    const staleSessionIds: string[] = [];
+
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.isActive && (now - session.lastActivity.getTime()) > timeoutMs) {
+        staleSessionIds.push(sessionId);
+      }
+    }
+
+    return staleSessionIds;
+  }
+
+  async cleanupStaleSessions(timeoutMs: number): Promise<number> {
+    const staleSessionIds = this.getStaleSessions(timeoutMs);
+    let cleanedCount = 0;
+
+    for (const sessionId of staleSessionIds) {
+      await this.cleanupSession(sessionId);
+      cleanedCount++;
+    }
+
+    if (cleanedCount > 0) {
+      logger.resource(`Cleaned up ${cleanedCount} stale sessions`);
+    }
+
+    return cleanedCount;
+  }
+}
+
 export class OcService {
   private configService: ConfigService;
-  private sessions = new Map<string, {
-    client: OpencodeClient;
-    server: { close: () => void; url: string };
-    createdAt: Date;
-    lastActivity: Date;
-    timeoutId?: NodeJS.Timeout;
-  }>();
+  private resourcePool: ResourcePool;
+  private sessionCoordinator: SessionCoordinator;
   private metrics = {
     sessionsCreated: 0,
     sessionsCleanedUp: 0,
@@ -80,55 +445,37 @@ export class OcService {
 
   constructor(configService: ConfigService) {
     this.configService = configService;
+
+    // Initialize resource pool with configurable limits
+    const maxInstancesPerTech = this.configService.getMaxInstancesPerTech();
+    const maxTotalInstances = this.configService.getMaxTotalInstances();
+    this.resourcePool = new ResourcePool(maxInstancesPerTech, maxTotalInstances);
+
+    // Initialize session coordinator
+    const maxConcurrentSessionsPerTech = this.configService.getMaxConcurrentSessionsPerTech();
+    const maxTotalSessions = this.configService.getMaxTotalSessions();
+    this.sessionCoordinator = new SessionCoordinator(
+      this.resourcePool,
+      maxConcurrentSessionsPerTech,
+      maxTotalSessions
+    );
   }
 
   private resetSessionTimeout(sessionId: string): void {
-    const sessionData = this.sessions.get(sessionId);
-    if (!sessionData) return;
-
-    // Clear existing timeout
-    if (sessionData.timeoutId) {
-      clearTimeout(sessionData.timeoutId);
-    }
-
-    // Set new timeout
     const timeoutMs = this.configService.getSessionTimeout() * 60 * 1000;
-    sessionData.timeoutId = setTimeout(async () => {
-      await this.cleanupSession(sessionId);
+    this.sessionCoordinator.setSessionTimeout(sessionId, timeoutMs, async () => {
+      await this.sessionCoordinator.cleanupSession(sessionId);
       await logger.resource(`Session ${sessionId} timed out after ${this.configService.getSessionTimeout()} minutes`);
-    }, timeoutMs);
-
-    sessionData.lastActivity = new Date();
+    });
   }
 
   private async cleanupSession(sessionId: string): Promise<void> {
-    const sessionData = this.sessions.get(sessionId);
-    if (sessionData) {
-      // Clear timeout if exists
-      if (sessionData.timeoutId) {
-        clearTimeout(sessionData.timeoutId);
-      }
-
-      // Close server and clean up
-      try {
-        sessionData.server.close();
-        await logger.resource(`Server closed for session ${sessionId}`);
-      } catch (error) {
-        await logger.error(`Error closing server for session ${sessionId}: ${error}`);
-      }
-
-      // Remove from tracking
-      this.sessions.delete(sessionId);
-      this.metrics.sessionsCleanedUp++;
-      this.metrics.currentSessionCount = this.sessions.size;
-
-      await logger.resource(`Session ${sessionId} cleaned up`);
-    }
+    await this.sessionCoordinator.cleanupSession(sessionId);
+    this.metrics.sessionsCleanedUp++;
+    this.metrics.currentSessionCount = this.sessionCoordinator.getCoordinatorMetrics().totalSessions;
   }
 
   private async getOpencodeInstance(tech: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
-    let portOffset = 0;
-    const maxInstances = 10;
     const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
 
     if (!configObject) {
@@ -136,39 +483,37 @@ export class OcService {
       const allRepos = this.configService.getRepos();
       const availableTechs = allRepos.map(repo => repo.name);
       const suggestedTechs = findSimilarStrings(tech, availableTechs, 3); // Increase threshold to allow more suggestions
-      
+
       throw new InvalidTechError(tech, availableTechs, suggestedTechs);
     }
 
-    while (portOffset < maxInstances) {
-      try {
-        const result = await createOpencode({
-          port: 3420 + portOffset,
-          config: configObject
-        });
-        return result;
-      } catch (err) {
-        if (err instanceof Error && err.message.includes('port')) {
-          portOffset++;
-        } else {
-          throw new OcError('FAILED TO CREATE OPENCODE CLIENT', err);
-        }
-      }
-    }
-    throw new OcError('FAILED TO CREATE OPENCODE CLIENT - all ports exhausted', null);
+    // Use resource pool to acquire instance
+    return await this.resourcePool.acquireInstance(tech, configObject);
   }
 
   async initSession(tech: string): Promise<string> {
+    // Check if we can create a session for this tech
+    const sessionCheck = this.sessionCoordinator.canCreateSession(tech);
+    if (!sessionCheck.allowed) {
+      throw new OcError(`SESSION LIMIT EXCEEDED: ${sessionCheck.reason}`, null);
+    }
+
     const result = await this.getOpencodeInstance(tech);
     const session = await result.client.session.create();
 
     if (session.error) {
+      // Release instance back to pool on failure
+      this.resourcePool.releaseInstance(tech, result.client);
       throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
     }
 
     const sessionID = session.data.id;
     const now = new Date();
-    this.sessions.set(sessionID, {
+
+    // Register session with coordinator
+    this.sessionCoordinator.registerSession({
+      sessionId: sessionID,
+      tech,
       client: result.client,
       server: result.server,
       createdAt: now,
@@ -180,7 +525,7 @@ export class OcService {
 
     // Update metrics
     this.metrics.sessionsCreated++;
-    this.metrics.currentSessionCount = this.sessions.size;
+    this.metrics.currentSessionCount = this.sessionCoordinator.getCoordinatorMetrics().totalSessions;
 
     await logger.resource(`Session ${sessionID} created for ${tech} with timeout`);
     await logger.metrics(`Sessions created: ${this.metrics.sessionsCreated}, Active: ${this.metrics.currentSessionCount}`);
@@ -189,7 +534,7 @@ export class OcService {
   }
 
   async sendPrompt(sessionId: string, text: string): Promise<AsyncIterable<Event>> {
-    const sessionData = this.sessions.get(sessionId);
+    const sessionData = this.sessionCoordinator.getSession(sessionId);
     if (!sessionData) {
       throw new OcError('OpenCode SDK not configured', null);
     }
@@ -245,12 +590,12 @@ export class OcService {
   }
 
   async cleanupAllSessions(): Promise<void> {
-    const sessionIds = Array.from(this.sessions.keys());
-    await logger.resource(`Cleaning up ${sessionIds.length} active sessions`);
+    const sessionsBeforeCleanup = this.sessionCoordinator.getCoordinatorMetrics().totalSessions;
+    await this.sessionCoordinator.cleanupAllSessions();
 
-    for (const sessionId of sessionIds) {
-      await this.cleanupSession(sessionId);
-    }
+    // Update metrics
+    this.metrics.sessionsCleanedUp += sessionsBeforeCleanup;
+    this.metrics.currentSessionCount = 0;
 
     await logger.resource('All sessions cleaned up');
   }
@@ -319,8 +664,21 @@ export class OcService {
   getMetrics() {
     return {
       ...this.metrics,
-      currentSessionCount: this.sessions.size
+      currentSessionCount: this.sessionCoordinator.getCoordinatorMetrics().totalSessions,
+      resourcePool: this.resourcePool.getPoolMetrics(),
+      sessionCoordinator: this.sessionCoordinator.getCoordinatorMetrics()
     };
+  }
+
+  async shutdown(): Promise<void> {
+    try {
+      await this.sessionCoordinator.cleanupAllSessions();
+      await this.resourcePool.shutdown();
+      await logger.resource('OcService shutdown complete');
+    } catch (error) {
+      await logger.error(`Error during OcService shutdown: ${error}`);
+      throw error;
+    }
   }
 
   async askQuestion(args: { question: string; tech: string }): Promise<AsyncIterable<Event>> {
@@ -353,8 +711,8 @@ export class OcService {
         const session = await result.client.session.create();
 
         if (session.error) {
-          result.server.close(); // Cleanup immediately
-          await logger.resource(`Session creation failed for ${tech}, server cleaned up`);
+          this.resourcePool.releaseInstance(tech, result.client); // Release back to pool
+          await logger.resource(`Session creation failed for ${tech}, instance released to pool`);
           await logger.error(`Failed to start OpenCode session for ${tech}: ${session.error}`);
           throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
         }
@@ -376,6 +734,9 @@ export class OcService {
               }
               if (event.type === 'session.idle' && event.properties.sessionID === sessionID) {
                 await logger.info(`Session ${sessionID} completed for ${tech}`);
+                // Release instance back to pool after session completes
+                this.resourcePool.releaseInstance(tech, result.client);
+                await logger.resource(`Instance for ${tech} released back to pool after session completion`);
                 break;
               }
               const props = event.properties;
@@ -410,12 +771,12 @@ export class OcService {
         return filteredEvents;
       } catch (error) {
         // Ensure cleanup even if error occurs after creation
-        if (result?.server) {
+        if (result?.client) {
           try {
-            result.server.close();
-            await logger.resource(`Server closed due to error in askQuestion for ${tech}`);
-          } catch (closeError) {
-            await logger.error(`Error closing server during cleanup: ${closeError}`);
+            this.resourcePool.releaseInstance(tech, result.client);
+            await logger.resource(`Instance released to pool due to error in askQuestion for ${tech}`);
+          } catch (releaseError) {
+            await logger.error(`Error releasing instance to pool during cleanup: ${releaseError}`);
           }
         }
 
