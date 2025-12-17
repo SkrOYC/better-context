@@ -21,7 +21,6 @@ export class OcService {
     lastActivity: Date;
     timeoutId?: NodeJS.Timeout;
   }>();
-  private serverPids = new Map<string, number>();
   private metrics = {
     sessionsCreated: 0,
     sessionsCleanedUp: 0,
@@ -70,7 +69,6 @@ export class OcService {
 
       // Remove from tracking
       this.sessions.delete(sessionId);
-      this.serverPids.delete(sessionId);
       this.metrics.sessionsCleanedUp++;
       this.metrics.currentSessionCount = this.sessions.size;
 
@@ -208,6 +206,12 @@ export class OcService {
   }
 
   async cleanupOrphanedProcesses(): Promise<void> {
+    // Skip orphaned process cleanup on Windows (Unix-only feature)
+    if (process.platform === 'win32') {
+      await logger.debug('Skipping orphaned process cleanup on Windows platform');
+      return;
+    }
+
     const basePort = 3420;
     const maxInstances = 5;
     const processesToClean: number[] = [];
@@ -231,7 +235,7 @@ export class OcService {
               stderr: 'ignore'
             });
 
-            const command = cmdResult?.stdout?.toString().trim() || '';
+            const command = cmdResult?.stdout ? (await new Response(cmdResult.stdout).text()).trim() : '';
             if (command.includes('node') || command.includes('bun') || command.includes('opencode')) {
               processesToClean.push(pid);
             }

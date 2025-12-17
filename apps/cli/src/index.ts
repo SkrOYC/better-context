@@ -46,11 +46,9 @@ async function main(): Promise<never> {
     await cli.run(args);
 
     await shutdown('normal', 0);
-    process.exit(0);
   } catch (error) {
     await logger.error(`Application error: ${error}`);
     await shutdown('error', 1);
-    process.exit(1);
   }
 }
 
