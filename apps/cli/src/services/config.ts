@@ -34,6 +34,26 @@ type Config = {
   maxConcurrentSessionsPerTech: number;
   maxTotalSessions: number;
   opencodeConfigDir: string;
+  // Network and timing
+  opencodeBasePort: number;
+  opencodePortRange: number;
+  requestTimeoutMs: number;
+  // Cache settings
+  repoCacheTtlMs: number;
+  responseCacheTtlMs: number;
+  validationCacheTtlMs: number;
+  sessionReuseTimeoutMs: number;
+  // Event processing
+  maxEventBufferSize: number;
+  eventProcessingRateLimit: number;
+  backpressureThreshold: number;
+  // Queue settings
+  maxQueueSize: number;
+  queueTimeoutMs: number;
+  // Instance management
+  instanceTimeoutMs: number;
+  // Monitoring
+  metricsIntervalMs: number;
 };
 
 // Repository caching interfaces
@@ -48,7 +68,7 @@ export class RepositoryCache {
   private defaultTtlMs: number = 15 * 60 * 1000; // 15 minutes default
 
   constructor(defaultTtlMs?: number) {
-    if (defaultTtlMs) {
+    if (defaultTtlMs !== undefined) {
       this.defaultTtlMs = defaultTtlMs;
     }
   }
@@ -146,7 +166,27 @@ const DEFAULT_CONFIG: Config = {
   maxTotalInstances: 10,
   maxConcurrentSessionsPerTech: 5,
   maxTotalSessions: 20,
-  opencodeConfigDir: '~/.config/btca/opencode'
+  opencodeConfigDir: '~/.config/btca/opencode',
+  // Network and timing
+  opencodeBasePort: 3420,
+  opencodePortRange: 5, // 3420-3424
+  requestTimeoutMs: 10000, // 10 seconds
+  // Cache settings
+  repoCacheTtlMs: 15 * 60 * 1000, // 15 minutes
+  responseCacheTtlMs: 10 * 60 * 1000, // 10 minutes
+  validationCacheTtlMs: 5 * 60 * 1000, // 5 minutes
+  sessionReuseTimeoutMs: 15 * 60 * 1000, // 15 minutes
+  // Event processing
+  maxEventBufferSize: 10000,
+  eventProcessingRateLimit: 1000,
+  backpressureThreshold: 500,
+  // Queue settings
+  maxQueueSize: 50,
+  queueTimeoutMs: 30000, // 30 seconds
+  // Instance management
+  instanceTimeoutMs: 30 * 60 * 1000, // 30 minutes
+  // Monitoring
+  metricsIntervalMs: 5 * 60 * 1000 // 5 minutes
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -270,26 +310,71 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
          (typeof parsed.maxTotalInstances === 'number' && parsed.maxTotalInstances > 0);
        const hasValidMaxConcurrentSessionsPerTech = parsed.maxConcurrentSessionsPerTech === undefined ||
          (typeof parsed.maxConcurrentSessionsPerTech === 'number' && parsed.maxConcurrentSessionsPerTech > 0);
-       const hasValidMaxTotalSessions = parsed.maxTotalSessions === undefined ||
-         (typeof parsed.maxTotalSessions === 'number' && parsed.maxTotalSessions > 0);
+        const hasValidMaxTotalSessions = parsed.maxTotalSessions === undefined ||
+          (typeof parsed.maxTotalSessions === 'number' && parsed.maxTotalSessions > 0);
+        const hasValidOpenCodeConfigDir = parsed.opencodeConfigDir === undefined ||
+          typeof parsed.opencodeConfigDir === 'string';
+        const hasValidOpenCodeBasePort = parsed.opencodeBasePort === undefined ||
+          (typeof parsed.opencodeBasePort === 'number' && parsed.opencodeBasePort > 0);
+        const hasValidOpenCodePortRange = parsed.opencodePortRange === undefined ||
+          (typeof parsed.opencodePortRange === 'number' && parsed.opencodePortRange > 0);
+        const hasValidRequestTimeout = parsed.requestTimeoutMs === undefined ||
+          (typeof parsed.requestTimeoutMs === 'number' && parsed.requestTimeoutMs > 0);
+        const hasValidRepoCacheTtl = parsed.repoCacheTtlMs === undefined ||
+          (typeof parsed.repoCacheTtlMs === 'number' && parsed.repoCacheTtlMs > 0);
+        const hasValidResponseCacheTtl = parsed.responseCacheTtlMs === undefined ||
+          (typeof parsed.responseCacheTtlMs === 'number' && parsed.responseCacheTtlMs > 0);
+        const hasValidValidationCacheTtl = parsed.validationCacheTtlMs === undefined ||
+          (typeof parsed.validationCacheTtlMs === 'number' && parsed.validationCacheTtlMs > 0);
+        const hasValidSessionReuseTimeout = parsed.sessionReuseTimeoutMs === undefined ||
+          (typeof parsed.sessionReuseTimeoutMs === 'number' && parsed.sessionReuseTimeoutMs > 0);
+        const hasValidMaxEventBufferSize = parsed.maxEventBufferSize === undefined ||
+          (typeof parsed.maxEventBufferSize === 'number' && parsed.maxEventBufferSize > 0);
+        const hasValidEventProcessingRateLimit = parsed.eventProcessingRateLimit === undefined ||
+          (typeof parsed.eventProcessingRateLimit === 'number' && parsed.eventProcessingRateLimit > 0);
+        const hasValidBackpressureThreshold = parsed.backpressureThreshold === undefined ||
+          (typeof parsed.backpressureThreshold === 'number' && parsed.backpressureThreshold > 0);
+        const hasValidMaxQueueSize = parsed.maxQueueSize === undefined ||
+          (typeof parsed.maxQueueSize === 'number' && parsed.maxQueueSize > 0);
+        const hasValidQueueTimeout = parsed.queueTimeoutMs === undefined ||
+          (typeof parsed.queueTimeoutMs === 'number' && parsed.queueTimeoutMs > 0);
+        const hasValidInstanceTimeout = parsed.instanceTimeoutMs === undefined ||
+          (typeof parsed.instanceTimeoutMs === 'number' && parsed.instanceTimeoutMs > 0);
+        const hasValidMetricsInterval = parsed.metricsIntervalMs === undefined ||
+          (typeof parsed.metricsIntervalMs === 'number' && parsed.metricsIntervalMs > 0);
 
-       const validationChecks = [
-         hasValidReposDirectory,
-         hasValidReposArray,
-         hasValidModel,
-         hasValidProvider,
-         hasValidSessionTimeout,
-         hasValidMaxRetries,
-         hasValidBaseBackoff,
-         hasValidMaxBackoff,
-         hasValidMaxInstancesPerTech,
-         hasValidMaxTotalInstances,
-         hasValidMaxConcurrentSessionsPerTech,
-         hasValidMaxTotalSessions
-       ];
+        const validationChecks = [
+          hasValidReposDirectory,
+          hasValidReposArray,
+          hasValidModel,
+          hasValidProvider,
+          hasValidSessionTimeout,
+          hasValidMaxRetries,
+          hasValidBaseBackoff,
+          hasValidMaxBackoff,
+          hasValidMaxInstancesPerTech,
+          hasValidMaxTotalInstances,
+          hasValidMaxConcurrentSessionsPerTech,
+          hasValidMaxTotalSessions,
+          hasValidOpenCodeConfigDir,
+          hasValidOpenCodeBasePort,
+          hasValidOpenCodePortRange,
+          hasValidRequestTimeout,
+          hasValidRepoCacheTtl,
+          hasValidResponseCacheTtl,
+          hasValidValidationCacheTtl,
+          hasValidSessionReuseTimeout,
+          hasValidMaxEventBufferSize,
+          hasValidEventProcessingRateLimit,
+          hasValidBackpressureThreshold,
+          hasValidMaxQueueSize,
+          hasValidQueueTimeout,
+          hasValidInstanceTimeout,
+          hasValidMetricsInterval
+        ];
 
-       if (validationChecks.some(check => !check)) {
-         throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
+        if (validationChecks.some(check => !check)) {
+          throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
 - \`reposDirectory\` (string)
 - \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)
 - \`model\` (string)
@@ -301,8 +386,23 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 - \`maxInstancesPerTech\` (positive number, optional)
 - \`maxTotalInstances\` (positive number, optional)
 - \`maxConcurrentSessionsPerTech\` (positive number, optional)
-- \`maxTotalSessions\` (positive number, optional)`);
-       }
+- \`maxTotalSessions\` (positive number, optional)
+- \`opencodeConfigDir\` (string, optional)
+- \`opencodeBasePort\` (positive number, optional)
+- \`opencodePortRange\` (positive number, optional)
+- \`requestTimeoutMs\` (positive number, optional)
+- \`repoCacheTtlMs\` (positive number, optional)
+- \`responseCacheTtlMs\` (positive number, optional)
+- \`validationCacheTtlMs\` (positive number, optional)
+- \`sessionReuseTimeoutMs\` (positive number, optional)
+- \`maxEventBufferSize\` (positive number, optional)
+- \`eventProcessingRateLimit\` (positive number, optional)
+- \`backpressureThreshold\` (positive number, optional)
+- \`maxQueueSize\` (positive number, optional)
+- \`queueTimeoutMs\` (positive number, optional)
+- \`instanceTimeoutMs\` (positive number, optional)
+- \`metricsIntervalMs\` (positive number, optional)`);
+        }
       const reposDir = expandHome(parsed.reposDirectory);
        config = {
          reposDirectory: reposDir,
@@ -317,7 +417,27 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
           maxTotalInstances: parsed.maxTotalInstances ?? 10,
           maxConcurrentSessionsPerTech: parsed.maxConcurrentSessionsPerTech ?? 5,
           maxTotalSessions: parsed.maxTotalSessions ?? 20,
-          opencodeConfigDir: parsed.opencodeConfigDir ?? expandHome('~/.config/btca/opencode')
+          opencodeConfigDir: parsed.opencodeConfigDir ?? expandHome('~/.config/btca/opencode'),
+          // Network and timing
+          opencodeBasePort: parsed.opencodeBasePort ?? 3420,
+          opencodePortRange: parsed.opencodePortRange ?? 5,
+          requestTimeoutMs: parsed.requestTimeoutMs ?? 10000,
+          // Cache settings
+          repoCacheTtlMs: parsed.repoCacheTtlMs ?? (15 * 60 * 1000),
+          responseCacheTtlMs: parsed.responseCacheTtlMs ?? (10 * 60 * 1000),
+          validationCacheTtlMs: parsed.validationCacheTtlMs ?? (5 * 60 * 1000),
+          sessionReuseTimeoutMs: parsed.sessionReuseTimeoutMs ?? (15 * 60 * 1000),
+          // Event processing
+          maxEventBufferSize: parsed.maxEventBufferSize ?? 10000,
+          eventProcessingRateLimit: parsed.eventProcessingRateLimit ?? 1000,
+          backpressureThreshold: parsed.backpressureThreshold ?? 500,
+          // Queue settings
+          maxQueueSize: parsed.maxQueueSize ?? 50,
+          queueTimeoutMs: parsed.queueTimeoutMs ?? 30000,
+          // Instance management
+          instanceTimeoutMs: parsed.instanceTimeoutMs ?? (30 * 60 * 1000),
+          // Monitoring
+          metricsIntervalMs: parsed.metricsIntervalMs ?? (5 * 60 * 1000)
         };
     }
     // Apply environment variable overrides
@@ -336,18 +456,19 @@ export class ConfigService {
   private config!: Config;
   private configPath!: string;
   private validationService: ValidationService;
-  private repositoryCache: RepositoryCache;
+  private repositoryCache!: RepositoryCache;
 
   constructor(validationService?: ValidationService) {
     this.validationService = validationService || new ValidationService(this);
-    // Initialize repository cache with 30-minute TTL to balance freshness with performance
-    this.repositoryCache = new RepositoryCache(30 * 60 * 1000);
   }
 
   async init(): Promise<void> {
     const loaded = await onStartLoadConfig();
     this.config = loaded.config;
     this.configPath = loaded.configPath;
+
+    // Initialize repository cache with configurable TTL
+    this.repositoryCache = new RepositoryCache(this.config.repoCacheTtlMs);
     await logger.info(`Config loaded from ${this.configPath}`);
   }
 
@@ -365,7 +486,7 @@ export class ConfigService {
     const suppressLogs = options.suppressLogs;
 
     // Check if repository needs updating based on cache
-    if (!this.repositoryCache.shouldUpdate(repoName)) {
+    if (!this.getRepositoryCache().shouldUpdate(repoName)) {
       if (!suppressLogs) {
         console.log(`Using cached repository for ${repo.name} (recently updated)`);
       }
@@ -374,7 +495,7 @@ export class ConfigService {
     }
 
     // Mark as checked to prevent redundant checks
-    this.repositoryCache.markChecked(repoName);
+    this.getRepositoryCache().markChecked(repoName);
 
     try {
       const exists = await directoryExists(repoDir);
@@ -383,13 +504,13 @@ export class ConfigService {
         await logger.info(`Pulling latest changes for ${repo.name} from ${repo.url} (branch: ${branch})`);
         await pullRepo({ repoDir, branch });
         // Mark as updated after successful pull
-        this.repositoryCache.markUpdated(repoName);
+        this.getRepositoryCache().markUpdated(repoName);
       } else {
         if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
         await logger.info(`Cloning ${repo.name} from ${repo.url} (branch: ${branch})`);
         await cloneRepo({ repoDir, url: repo.url, branch });
         // Mark as updated after successful clone
-        this.repositoryCache.markUpdated(repoName);
+        this.getRepositoryCache().markUpdated(repoName);
       }
       if (!suppressLogs) console.log(`Done with ${repo.name}`);
       await logger.info(`${repo.name} operation completed successfully`);
@@ -503,7 +624,76 @@ export class ConfigService {
     return this.validationService;
   }
 
+  private getRepositoryCache(): RepositoryCache {
+    if (!this.repositoryCache) {
+      throw new ConfigError('ConfigService not initialized - call init() first');
+    }
+    return this.repositoryCache;
+  }
+
   getRepositoryCacheStats() {
-    return this.repositoryCache.getStats();
+    return this.getRepositoryCache().getStats();
+  }
+
+  // Network and timing
+  getOpenCodeBasePort(): number {
+    return this.config.opencodeBasePort;
+  }
+
+  getOpenCodePortRange(): number {
+    return this.config.opencodePortRange;
+  }
+
+  getRequestTimeoutMs(): number {
+    return this.config.requestTimeoutMs;
+  }
+
+  // Cache settings
+  getRepoCacheTtlMs(): number {
+    return this.config.repoCacheTtlMs;
+  }
+
+  getResponseCacheTtlMs(): number {
+    return this.config.responseCacheTtlMs;
+  }
+
+  getValidationCacheTtlMs(): number {
+    return this.config.validationCacheTtlMs;
+  }
+
+  getSessionReuseTimeoutMs(): number {
+    return this.config.sessionReuseTimeoutMs;
+  }
+
+  // Event processing
+  getMaxEventBufferSize(): number {
+    return this.config.maxEventBufferSize;
+  }
+
+  getEventProcessingRateLimit(): number {
+    return this.config.eventProcessingRateLimit;
+  }
+
+  getBackpressureThreshold(): number {
+    return this.config.backpressureThreshold;
+  }
+
+  // Queue settings
+  getMaxQueueSize(): number {
+    return this.config.maxQueueSize;
+  }
+
+  getQueueTimeoutMs(): number {
+    return this.config.queueTimeoutMs;
+  }
+
+  // Instance management
+  getInstanceTimeoutMs(): number {
+    return this.config.instanceTimeoutMs;
+  }
+
+  // Monitoring
+  getMetricsIntervalMs(): number {
+    return this.config.metricsIntervalMs;
   }
 }

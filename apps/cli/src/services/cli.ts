@@ -445,6 +445,7 @@ Available technologies: ${availableTechnologies}`)
       .description('Manage btca configuration settings')
       .addHelpText('after', `
 EXAMPLES:
+  $ btca config show                     # Show current configuration
   $ btca config model                    # View current model settings
   $ btca config model --provider openai --model gpt-4  # Set model
   $ btca config repos list               # List configured repos
@@ -558,14 +559,22 @@ EXAMPLES:
          await this.handleAuthLogoutCommand(options.provider);
        });
 
-     authCommand
-       .command('status')
-       .description('Show current authentication status')
-       .action(async () => {
-         await this.handleAuthStatusCommand();
-       });
+    authCommand
+      .command('status')
+      .description('Show current authentication status')
+      .action(async () => {
+        await this.handleAuthStatusCommand();
+      });
 
-     // List command
+    // Config show subcommand
+    configCommand
+      .command('show')
+      .description('Show current configuration')
+      .action(async () => {
+        await this.handleConfigShowCommand();
+      });
+
+    // List command
     this.program
       .command('list')
       .description('List all configured technologies')
@@ -772,7 +781,7 @@ EXAMPLES:
       try {
         const { client, server } = await createOpencode({
           port: 0,
-          timeout: 10000
+          timeout: this.config.getRequestTimeoutMs()
         });
 
         try {
@@ -828,7 +837,7 @@ EXAMPLES:
       try {
         const { client, server } = await createOpencode({
           port: 0,
-          timeout: 10000
+          timeout: this.config.getRequestTimeoutMs()
         });
 
         try {
@@ -863,6 +872,19 @@ EXAMPLES:
       }
     } catch (error) {
       console.error(`Error checking auth status: ${error}`);
+    }
+  }
+
+  private async handleConfigShowCommand(): Promise<void> {
+    try {
+      const config = this.config.rawConfig();
+      console.log('Current btca configuration:');
+      console.log('==============================');
+      console.log(JSON.stringify(config, null, 2));
+      console.log();
+      console.log(`Config file location: ${this.config.getConfigPath()}`);
+    } catch (error) {
+      console.error(`Error showing config: ${error}`);
     }
   }
 
