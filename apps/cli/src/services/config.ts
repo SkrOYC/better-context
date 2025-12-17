@@ -25,6 +25,9 @@ type Config = {
   model: string;
   provider: string;
   sessionTimeoutMinutes: number;
+  maxRetries: number;
+  baseBackoffMs: number;
+  maxBackoffMs: number;
 };
 
 const DEFAULT_CONFIG: Config = {
@@ -52,7 +55,10 @@ const DEFAULT_CONFIG: Config = {
   ],
   model: 'big-pickle',
   provider: 'opencode',
-  sessionTimeoutMinutes: 30
+  sessionTimeoutMinutes: 30,
+  maxRetries: 3,
+  baseBackoffMs: 1000,
+  maxBackoffMs: 30000
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -162,20 +168,37 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
       );
       const hasValidModel = typeof parsed.model === 'string';
       const hasValidProvider = typeof parsed.provider === 'string';
-      const hasValidSessionTimeout = parsed.sessionTimeoutMinutes === undefined ||
-        (typeof parsed.sessionTimeoutMinutes === 'number' && parsed.sessionTimeoutMinutes > 0);
+       const hasValidSessionTimeout = parsed.sessionTimeoutMinutes === undefined ||
+         (typeof parsed.sessionTimeoutMinutes === 'number' && parsed.sessionTimeoutMinutes > 0);
+       const hasValidMaxRetries = parsed.maxRetries === undefined ||
+         (typeof parsed.maxRetries === 'number' && parsed.maxRetries >= 0);
+       const hasValidBaseBackoff = parsed.baseBackoffMs === undefined ||
+         (typeof parsed.baseBackoffMs === 'number' && parsed.baseBackoffMs > 0);
+       const hasValidMaxBackoff = parsed.maxBackoffMs === undefined ||
+         (typeof parsed.maxBackoffMs === 'number' && parsed.maxBackoffMs > 0);
 
-      if (!hasValidReposDirectory || !hasValidReposArray || !hasValidModel || !hasValidProvider || !hasValidSessionTimeout) {
-        throw new Error('Config file is invalid. Ensure `reposDirectory` (string), `repos` (array of objects with `name`, `url`, `branch`), `model` (string), `provider` (string), and `sessionTimeoutMinutes` (positive number, optional) are correctly defined.');
-      }
+       if (!hasValidReposDirectory || !hasValidReposArray || !hasValidModel || !hasValidProvider || !hasValidSessionTimeout || !hasValidMaxRetries || !hasValidBaseBackoff || !hasValidMaxBackoff) {
+         throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
+- \`reposDirectory\` (string)
+- \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)
+- \`model\` (string)
+- \`provider\` (string)
+- \`sessionTimeoutMinutes\` (positive number, optional)
+- \`maxRetries\` (non-negative number, optional)
+- \`baseBackoffMs\` (positive number, optional)
+- \`maxBackoffMs\` (positive number, optional)`);
+       }
       const reposDir = expandHome(parsed.reposDirectory);
-      config = {
-        reposDirectory: reposDir,
-        repos: parsed.repos,
-        model: parsed.model,
-        provider: parsed.provider,
-        sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 30
-      };
+       config = {
+         reposDirectory: reposDir,
+         repos: parsed.repos,
+         model: parsed.model,
+         provider: parsed.provider,
+         sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 30,
+         maxRetries: parsed.maxRetries ?? 3,
+         baseBackoffMs: parsed.baseBackoffMs ?? 1000,
+         maxBackoffMs: parsed.maxBackoffMs ?? 30000
+       };
     }
     // Apply environment variable overrides
     config.model = process.env.BTCA_MODEL || config.model;
@@ -289,5 +312,17 @@ export class ConfigService {
 
   getSessionTimeout(): number {
     return this.config.sessionTimeoutMinutes;
+  }
+
+  getMaxRetries(): number {
+    return this.config.maxRetries;
+  }
+
+  getBaseBackoffMs(): number {
+    return this.config.baseBackoffMs;
+  }
+
+  getMaxBackoffMs(): number {
+    return this.config.maxBackoffMs;
   }
 }
