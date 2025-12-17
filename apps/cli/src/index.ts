@@ -1,6 +1,7 @@
 import { CliService } from './services/cli.ts';
 import { OcService } from './services/oc.ts';
 import { ConfigService } from './services/config.ts';
+import { ValidationService } from './services/validation.ts';
 import { logger } from './lib/utils/logger.ts';
 
 // Check if no arguments provided (just "btca" or "bunx btca")
@@ -31,8 +32,15 @@ function setupGracefulShutdown(): void {
 
 async function main(): Promise<never> {
   try {
+    // Initialize ConfigService first (without validation)
     const config = new ConfigService();
     await config.init();
+
+    // Initialize ValidationService with the config
+    const validationService = config.getValidationService();
+    await validationService.initialize({ failOnStartupValidation: false }); // Fail-open for startup
+
+    // Initialize OcService
     oc = new OcService(config);
 
     // Setup graceful shutdown handlers

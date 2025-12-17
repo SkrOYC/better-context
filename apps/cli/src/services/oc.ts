@@ -6,7 +6,6 @@ import {
 } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
 import { OcError, InvalidTechError, RetryableError, NonRetryableError } from '../lib/errors.ts';
-import { validateProviderAndModel } from '../lib/utils/validation.ts';
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
 import { logger } from '../lib/utils/logger.ts';
 
