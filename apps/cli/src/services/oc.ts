@@ -9,7 +9,6 @@ import { OcError, InvalidTechError, RetryableError, NonRetryableError } from '..
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
 import { logger } from '../lib/utils/logger.ts';
 import { EventProcessor } from '../lib/event/EventProcessor.ts';
-import { EventHandlerRegistry } from '../lib/event/EventHandlerRegistry.ts';
 import { EventStreamManager } from '../lib/event/EventStreamManager.ts';
 import { MessageEventHandler } from '../lib/event/handlers/MessageEventHandler.ts';
 import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.ts';
@@ -441,7 +440,6 @@ export class OcService {
   private resourcePool: ResourcePool;
   private sessionCoordinator: SessionCoordinator;
   private eventProcessor: EventProcessor;
-  private eventHandlerRegistry: EventHandlerRegistry;
   private eventStreamManager: EventStreamManager;
   private metrics = {
     sessionsCreated: 0,
@@ -476,8 +474,6 @@ export class OcService {
       backpressureThreshold: 500,
     });
 
-    this.eventHandlerRegistry = new EventHandlerRegistry();
-
     this.eventStreamManager = new EventStreamManager();
 
     // Register default event handlers
@@ -489,12 +485,6 @@ export class OcService {
     const messageHandler = new MessageEventHandler({
       outputStream: process.stdout,
       enableFormatting: true,
-    });
-    this.eventHandlerRegistry.registerHandler({
-      name: 'message-handler',
-      handler: messageHandler,
-      eventTypes: ['message.part.updated'],
-      priority: 0,
     });
 
     // Register session event handler for session lifecycle
@@ -515,16 +505,10 @@ export class OcService {
         // Handle error cleanup if needed
       },
     });
-    this.eventHandlerRegistry.registerHandler({
-      name: 'session-handler',
-      handler: sessionHandler,
-      eventTypes: ['session.error', 'session.idle'],
-      priority: -1, // Higher priority for session events
-    });
 
     // Register handlers with the processor
-    this.eventProcessor.registerHandler('message-handler', messageHandler as any);
-    this.eventProcessor.registerHandler('session-handler', sessionHandler as any);
+    this.eventProcessor.registerHandler('message-handler', messageHandler);
+    this.eventProcessor.registerHandler('session-handler', sessionHandler);
 
     logger.info('Default event handlers registered');
   }
@@ -830,8 +814,7 @@ export class OcService {
             id: `session-${sessionID}`,
             description: `Event stream for session ${sessionID} (${tech})`,
             timeoutMs: this.configService.getSessionTimeout() * 60 * 1000,
-          },
-          this.eventProcessor
+          }
         );
 
         // Fire the prompt asynchronously

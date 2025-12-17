@@ -74,8 +74,14 @@ export class BackpressureController {
 
     // Clean old timestamps outside the monitoring window
     const cutoffTime = now - this.config.monitoringWindowMs;
-    while (this.eventTimestamps.length > 0 && (this.eventTimestamps[0] ?? 0) < cutoffTime) {
-      this.eventTimestamps.shift();
+    const firstValidIndex = this.eventTimestamps.findIndex(ts => ts >= cutoffTime);
+
+    if (firstValidIndex > 0) {
+      // Remove all timestamps before the cutoff
+      this.eventTimestamps.splice(0, firstValidIndex);
+    } else if (firstValidIndex === -1 && this.eventTimestamps.length > 0) {
+      // All timestamps are old, clear the array
+      this.eventTimestamps.length = 0;
     }
   }
 

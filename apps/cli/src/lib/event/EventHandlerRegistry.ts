@@ -27,6 +27,7 @@ export class EventHandlerRegistry {
     errorCount: number;
     totalExecutionTime: number;
   }>();
+  private handlerToNameMap = new Map<EventHandler, string>();
 
   /**
    * Register a new event handler
@@ -39,6 +40,7 @@ export class EventHandlerRegistry {
     }
 
     this.handlers.set(name, handler);
+    this.handlerToNameMap.set(handler, name);
     this.handlerMetadata.set(name, {
       eventTypes,
       priority,
@@ -60,6 +62,10 @@ export class EventHandlerRegistry {
       return;
     }
 
+    const handler = this.handlers.get(name);
+    if (handler) {
+      this.handlerToNameMap.delete(handler);
+    }
     this.handlers.delete(name);
     this.handlerMetadata.delete(name);
     logger.info(`Unregistered event handler: ${name}`);
@@ -159,12 +165,7 @@ export class EventHandlerRegistry {
    * Get the registered name for a handler instance
    */
   private getHandlerName(handler: EventHandler): string | null {
-    for (const [name, registeredHandler] of this.handlers.entries()) {
-      if (registeredHandler === handler) {
-        return name;
-      }
-    }
-    return null;
+    return this.handlerToNameMap.get(handler) || null;
   }
 
   /**

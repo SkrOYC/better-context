@@ -21,6 +21,7 @@ export class EventProcessor {
   private handlers = new Map<string, EventHandler>();
   private activeHandlers = new Set<Promise<any>>();
   private eventQueue = new Set<Promise<any>>();
+  private sortedHandlers: Array<{ name: string; handler: EventHandler; priority: number }> = [];
 
   private options: Required<EventProcessingOptions>;
   private processingTimer?: NodeJS.Timeout;
@@ -41,6 +42,7 @@ export class EventProcessor {
    */
   registerHandler(name: string, handler: EventHandler): void {
     this.handlers.set(name, handler);
+    this.updateSortedHandlers();
     logger.debug(`Event handler registered: ${name}`);
   }
 
@@ -49,6 +51,7 @@ export class EventProcessor {
    */
   unregisterHandler(name: string): void {
     this.handlers.delete(name);
+    this.updateSortedHandlers();
     logger.debug(`Event handler unregistered: ${name}`);
   }
 
@@ -154,6 +157,19 @@ export class EventProcessor {
   }
 
   /**
+   * Update the sorted handlers cache
+   */
+  private updateSortedHandlers(): void {
+    this.sortedHandlers = Array.from(this.handlers.entries())
+      .map(([name, handler]) => ({
+        name,
+        handler,
+        priority: (handler as any).priority ?? 0,
+      }))
+      .sort((a, b) => a.priority - b.priority);
+  }
+
+  /**
    * Get the next event to process, prioritizing by handler priority
    */
   private getNextEvent(): Event | null {
@@ -166,13 +182,15 @@ export class EventProcessor {
     let bestPriority = Number.MAX_SAFE_INTEGER;
 
     for (const event of this.eventBuffer) {
-      const handlers = this.getHandlersForEvent(event);
-      if (handlers.length === 0) {
-        continue; // Skip events with no handlers
+      // Find the highest priority handler that can handle this event
+      let eventPriority = Number.MAX_SAFE_INTEGER;
+      for (const { handler } of this.sortedHandlers) {
+        if (handler.canHandle(event)) {
+          eventPriority = Math.min(eventPriority, (handler as any).priority ?? 0);
+          break; // Found the highest priority handler for this event
+        }
       }
 
-      // Find the highest priority among handlers for this event
-      const eventPriority = Math.min(...handlers.map(h => h.priority ?? 0));
       if (eventPriority < bestPriority) {
         bestPriority = eventPriority;
         bestEvent = event;
@@ -197,7 +215,7 @@ export class EventProcessor {
 
     for (const handler of handlers) {
       try {
-        const result = handler.handle(event as any);
+        const result = handler.handle(event);
         if (result instanceof Promise) {
           // Wrap the promise to catch rejections
           const wrappedPromise = result.catch(error => {
@@ -223,14 +241,14 @@ export class EventProcessor {
   private getHandlersForEvent(event: Event): EventHandler[] {
     const applicableHandlers: EventHandler[] = [];
 
-    for (const handler of this.handlers.values()) {
+    // Use sorted handlers for efficiency
+    for (const { handler } of this.sortedHandlers) {
       if (handler.canHandle(event)) {
         applicableHandlers.push(handler);
       }
     }
 
-    // Sort by priority (lower number = higher priority)
-    return applicableHandlers.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+    return applicableHandlers;
   }
 
   /**

@@ -10,7 +10,8 @@ export interface MessageEventHandlerOptions {
 
 export class MessageEventHandler implements EventHandler<Event> {
   private currentMessageId: string | null = null;
-  private messageBuffer = new Map<string, string>();
+  private messageBuffer = new Map<string, { content: string; timestamp: number }>();
+  private maxBufferSize = 100; // Maximum number of messages to keep in buffer
   private options: Required<MessageEventHandlerOptions>;
 
   constructor(options: MessageEventHandlerOptions = {}) {
@@ -68,11 +69,12 @@ export class MessageEventHandler implements EventHandler<Event> {
       this.writeToOutput('\n\n');
     }
 
+    const now = Date.now();
     if (initialText) {
       this.writeToOutput(initialText);
-      this.messageBuffer.set(messageId, initialText);
+      this.messageBuffer.set(messageId, { content: initialText, timestamp: now });
     } else {
-      this.messageBuffer.set(messageId, '');
+      this.messageBuffer.set(messageId, { content: '', timestamp: now });
     }
 
     logger.debug(`Started message: ${messageId}`);
@@ -81,25 +83,41 @@ export class MessageEventHandler implements EventHandler<Event> {
   private endMessage(messageId: string): void {
     const finalText = this.messageBuffer.get(messageId);
     if (finalText) {
-      logger.debug(`Completed message: ${messageId} (${finalText.length} chars)`);
+      logger.debug(`Completed message: ${messageId} (${finalText.content.length} chars)`);
     }
-
-    // Clean up buffer for completed messages after a delay
-    // This allows for potential retries or corrections
-    setTimeout(() => {
-      this.messageBuffer.delete(messageId);
-    }, 5000); // Keep for 5 seconds
+    // Note: Buffer cleanup is now handled automatically by cleanupOldMessages()
   }
 
   private updateMessageBuffer(messageId: string, delta: string, fullText?: string): void {
+    const now = Date.now();
+
     if (fullText) {
       // Full text provided, replace buffer
-      this.messageBuffer.set(messageId, fullText);
+      this.messageBuffer.set(messageId, { content: fullText, timestamp: now });
     } else if (delta) {
       // Incremental update
-      const currentText = this.messageBuffer.get(messageId) || '';
+      const existing = this.messageBuffer.get(messageId);
+      const currentText = existing?.content || '';
       const newText = currentText + delta;
-      this.messageBuffer.set(messageId, newText);
+      this.messageBuffer.set(messageId, { content: newText, timestamp: now });
+    }
+
+    // Auto-cleanup old messages to prevent memory leaks
+    this.cleanupOldMessages();
+  }
+
+  private cleanupOldMessages(): void {
+    if (this.messageBuffer.size <= this.maxBufferSize) {
+      return;
+    }
+
+    // Remove oldest messages when buffer gets too large
+    const entries = Array.from(this.messageBuffer.entries());
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+    const toRemove = entries.slice(0, entries.length - this.maxBufferSize + 10); // Keep some margin
+    for (const [messageId] of toRemove) {
+      this.messageBuffer.delete(messageId);
     }
   }
 
@@ -155,6 +173,7 @@ export class MessageEventHandler implements EventHandler<Event> {
    * Get buffered content for a specific message
    */
   getBufferedContent(messageId: string): string | null {
-    return this.messageBuffer.get(messageId) || null;
+    const entry = this.messageBuffer.get(messageId);
+    return entry ? entry.content : null;
   }
 }

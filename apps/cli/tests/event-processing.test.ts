@@ -473,29 +473,14 @@ describe('Event Processing System', () => {
     it('should process events end-to-end', async () => {
       // Create a complete event processing pipeline
       const processor = new EventProcessor();
-      const registry = new EventHandlerRegistry();
-      const manager = new EventStreamManager();
 
-      // Register handlers
+      // Register handlers with processor
       const messageHandler = new MessageEventHandler({
         outputStream: { write: vi.fn() },
       });
 
       const sessionHandler = SessionEventHandler.createDefaultHandler();
 
-      registry.registerHandler({
-        name: 'message-handler',
-        handler: messageHandler,
-        eventTypes: ['message.part.updated'],
-      });
-
-      registry.registerHandler({
-        name: 'session-handler',
-        handler: sessionHandler,
-        eventTypes: ['session.error', 'session.idle'],
-      });
-
-      // Register with processor
       processor.registerHandler('message-handler', messageHandler);
       processor.registerHandler('session-handler', sessionHandler);
 
@@ -525,16 +510,10 @@ describe('Event Processing System', () => {
         },
       };
 
-      // Create stream and process events
-      await manager.createStream(eventStream, {
-        id: 'integration-test-stream',
-      }, processor);
-
-      // Wait for processing to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Process events directly with processor
+      await processor.processEventStream(eventStream);
 
       // Cleanup
-      await manager.shutdown();
       await processor.shutdown();
 
       // Verify handlers were called appropriately

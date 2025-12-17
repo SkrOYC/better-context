@@ -23,7 +23,6 @@ export interface ActiveStream {
 
 export class EventStreamManager {
   private activeStreams = new Map<string, ActiveStream>();
-  private streamPool = new Map<string, EventProcessor>();
   private cleanupInterval?: NodeJS.Timeout;
 
   private defaultConfig = {
@@ -41,15 +40,20 @@ export class EventStreamManager {
    */
   async createStream(
     eventStream: AsyncIterable<Event>,
-    config: StreamConfig,
-    processor?: EventProcessor
+    config: StreamConfig
   ): Promise<string> {
     if (this.activeStreams.has(config.id)) {
       throw new Error(`Stream with ID '${config.id}' already exists`);
     }
 
-    // Use provided processor or get one from pool
-    const streamProcessor = processor || this.getPooledProcessor(config.id);
+    // Create a dedicated processor for this stream
+    const streamProcessor = new EventProcessor({
+      bufferSize: 1000,
+      maxConcurrentHandlers: 5,
+      processingRateLimit: 100,
+      enableBackpressure: true,
+      backpressureThreshold: 500,
+    });
 
     const activeStream: ActiveStream = {
       id: config.id,
@@ -74,46 +78,6 @@ export class EventStreamManager {
     return config.id;
   }
 
-  /**
-   * Get a processor from the pool or create a new one
-   */
-  private getPooledProcessor(streamId: string): EventProcessor {
-    // Try to reuse an existing processor
-    const availableProcessor = this.findAvailableProcessor();
-    if (availableProcessor) {
-      logger.debug(`Reusing pooled processor for stream: ${streamId}`);
-      return availableProcessor;
-    }
-
-    // Create a new processor
-    const processor = new EventProcessor({
-      bufferSize: 500,
-      maxConcurrentHandlers: 5,
-      processingRateLimit: 50,
-      enableBackpressure: true,
-      backpressureThreshold: 200,
-    });
-
-    this.streamPool.set(streamId, processor);
-    logger.debug(`Created new processor for stream: ${streamId}`);
-
-    return processor;
-  }
-
-  /**
-   * Find an available processor from the pool
-   */
-  private findAvailableProcessor(): EventProcessor | null {
-    // Simple strategy: return the first available processor
-    // In a more sophisticated implementation, this could consider load balancing
-    for (const processor of this.streamPool.values()) {
-      const metrics = processor.getMetrics();
-      if (metrics.bufferSize === 0 && metrics.activeHandlers === 0) {
-        return processor;
-      }
-    }
-    return null;
-  }
 
   /**
    * Process an event stream
@@ -205,9 +169,6 @@ export class EventStreamManager {
       await stream.processor.shutdown();
       this.activeStreams.delete(streamId);
 
-      // Return processor to pool for reuse
-      this.streamPool.set(streamId, stream.processor);
-
       logger.info(`Stream stopped: ${streamId}`);
     } catch (error) {
       logger.error(`Error stopping stream ${streamId}: ${error}`);
@@ -295,7 +256,6 @@ export class EventStreamManager {
       errorStreams: errorStreams.length,
       timeoutStreams: timeoutStreams.length,
       totalEventsProcessed: totalEvents,
-      pooledProcessors: this.streamPool.size,
     };
   }
 
@@ -309,12 +269,6 @@ export class EventStreamManager {
     }
 
     await this.stopAllStreams();
-
-    // Clean up processor pool
-    for (const processor of this.streamPool.values()) {
-      await processor.shutdown();
-    }
-    this.streamPool.clear();
 
     logger.info('EventStreamManager shutdown complete');
   }
