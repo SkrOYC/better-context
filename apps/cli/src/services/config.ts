@@ -6,6 +6,7 @@ import { ConfigError } from '../lib/errors.ts';
 import { cloneRepo, pullRepo } from '../lib/utils/git.ts';
 import { directoryExists, expandHome } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
+import { ValidationService, type ValidationConfig } from './validation.ts';
 
 const CONFIG_DIRECTORY = '~/.config/btca';
 const CONFIG_FILENAME = 'btca.json';
@@ -254,9 +255,10 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 export class ConfigService {
   private config!: Config;
   private configPath!: string;
+  private validationService: ValidationService;
 
-  constructor() {
-    // Will be initialized async
+  constructor(validationService?: ValidationService) {
+    this.validationService = validationService || new ValidationService(this);
   }
 
   async init(): Promise<void> {
@@ -321,8 +323,21 @@ export class ConfigService {
   }
 
   async updateModel(args: { provider: string; model: string }): Promise<{ provider: string; model: string }> {
+    const oldConfig = { ...this.config };
     this.config = { ...this.config, provider: args.provider, model: args.model };
-    await writeConfig(this.config);
+
+    // Validate the new configuration before saving
+    try {
+      await this.validationService.validateCurrentConfig();
+      await writeConfig(this.config);
+      await logger.info(`Model configuration updated to ${args.provider}/${args.model}`);
+    } catch (error) {
+      // Revert the config change on validation failure
+      this.config = oldConfig;
+      await logger.error(`Model configuration validation failed: ${error}`);
+      throw error;
+    }
+
     return { provider: this.config.provider, model: this.config.model };
   }
 
@@ -379,5 +394,9 @@ export class ConfigService {
 
   getMaxTotalSessions(): number {
     return this.config.maxTotalSessions;
+  }
+
+  getValidationService(): ValidationService {
+    return this.validationService;
   }
 }

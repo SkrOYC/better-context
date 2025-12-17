@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
-import { InvalidTechError, RetryableError, NonRetryableError } from '../lib/errors.ts';
+import { InvalidTechError, RetryableError, NonRetryableError, StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
 import { directoryExists } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
 
@@ -33,6 +33,14 @@ const handleCommandError = (e: any): void => {
   } else if (e instanceof NonRetryableError) {
     console.error(`Configuration error: ${e.message}`);
     console.error(`Please check your settings and try again.`);
+    throw e;
+  } else if (e.name === 'StartupValidationError') {
+    console.error(`Configuration validation failed: ${e.message}`);
+    console.error(`Please check your provider/model configuration and network connectivity.`);
+    throw e;
+  } else if (e.name === 'ConfigurationChangeError') {
+    console.error(`Configuration update failed: ${e.message}`);
+    console.error(`The new configuration could not be validated. Please check your settings.`);
     throw e;
   } else {
     throw e;

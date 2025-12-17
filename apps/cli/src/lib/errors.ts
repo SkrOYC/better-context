@@ -83,3 +83,19 @@ export class NonRetryableError extends Error {
     super(message);
   }
 }
+
+export class StartupValidationError extends Error {
+  readonly _tag = "StartupValidationError";
+  override readonly name = "StartupValidationError";
+  constructor(override readonly message: string, override readonly cause?: unknown) {
+    super(message);
+  }
+}
+
+export class ConfigurationChangeError extends Error {
+  readonly _tag = "ConfigurationChangeError";
+  override readonly name = "ConfigurationChangeError";
+  constructor(override readonly message: string, override readonly cause?: unknown) {
+    super(message);
+  }
+}
