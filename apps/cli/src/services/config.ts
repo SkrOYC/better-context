@@ -193,7 +193,22 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
        const hasValidMaxTotalSessions = parsed.maxTotalSessions === undefined ||
          (typeof parsed.maxTotalSessions === 'number' && parsed.maxTotalSessions > 0);
 
-       if (!hasValidReposDirectory || !hasValidReposArray || !hasValidModel || !hasValidProvider || !hasValidSessionTimeout || !hasValidMaxRetries || !hasValidBaseBackoff || !hasValidMaxBackoff || !hasValidMaxInstancesPerTech || !hasValidMaxTotalInstances || !hasValidMaxConcurrentSessionsPerTech || !hasValidMaxTotalSessions) {
+       const validationChecks = [
+         hasValidReposDirectory,
+         hasValidReposArray,
+         hasValidModel,
+         hasValidProvider,
+         hasValidSessionTimeout,
+         hasValidMaxRetries,
+         hasValidBaseBackoff,
+         hasValidMaxBackoff,
+         hasValidMaxInstancesPerTech,
+         hasValidMaxTotalInstances,
+         hasValidMaxConcurrentSessionsPerTech,
+         hasValidMaxTotalSessions
+       ];
+
+       if (validationChecks.some(check => !check)) {
          throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
 - \`reposDirectory\` (string)
 - \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)

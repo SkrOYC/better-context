@@ -102,16 +102,16 @@ export class ResourcePool {
   private performCleanup(): void {
     const now = Date.now();
     for (const [tech, instances] of this.pool.entries()) {
-      const activeInstances = instances.filter(instance =>
-        !instance.inUse &&
+      const instancesToKeep = instances.filter(instance =>
+        instance.inUse ||
         (now - instance.lastUsed.getTime()) < this.instanceTimeoutMs
       );
 
-      if (activeInstances.length !== instances.length) {
+      if (instancesToKeep.length !== instances.length) {
         // Some instances were cleaned up
-        this.pool.set(tech, activeInstances);
+        this.pool.set(tech, instancesToKeep);
 
-        const cleanedCount = instances.length - activeInstances.length;
+        const cleanedCount = instances.length - instancesToKeep.length;
         logger.resource(`Cleaned up ${cleanedCount} unused instances for ${tech}`);
       }
     }
@@ -251,7 +251,7 @@ export class ResourcePool {
           }
         } catch (error) {
           // Ignore errors during shutdown
-          console.warn(`Error closing pooled instance for ${tech}: ${error}`);
+          await logger.warn(`Error closing pooled instance for ${tech}: ${error}`);
         }
       }
     }
@@ -353,9 +353,7 @@ export class SessionCoordinator {
 
     // Update tech session count
     const currentCount = this.techSessionCounts.get(session.tech) || 0;
-    if (currentCount > 0) {
-      this.techSessionCounts.set(session.tech, currentCount - 1);
-    }
+    this.techSessionCounts.set(session.tech, Math.max(0, currentCount - 1));
 
     // Remove from tracking
     this.sessions.delete(sessionId);
@@ -674,12 +672,8 @@ export class OcService {
 
   async shutdown(): Promise<void> {
     try {
-      if (this.sessionCoordinator) {
-        await this.sessionCoordinator.cleanupAllSessions();
-      }
-      if (this.resourcePool) {
-        await this.resourcePool.shutdown();
-      }
+      await this.sessionCoordinator.cleanupAllSessions();
+      await this.resourcePool.shutdown();
       await logger.resource('OcService shutdown complete');
     } catch (error) {
       await logger.error(`Error during OcService shutdown: ${error}`);

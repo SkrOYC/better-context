@@ -279,28 +279,41 @@ describe('Resource Cleanup Verification', () => {
       const pool = (ocService as any).resourcePool;
       const startTime = Date.now();
 
-      // Simulate multiple concurrent requests for the same tech
-      const promises = [];
-      for (let i = 0; i < 5; i++) {
-        promises.push(pool.acquireInstance('benchmark-tech', { test: 'config' } as any));
-      }
+      // Initially pool should be empty
+      expect(pool.getPoolMetrics().totalInstances).toBe(0);
 
-      const results = await Promise.all(promises);
+      // Acquire instances up to the limit (3 per tech)
+      const instance1 = await pool.acquireInstance('benchmark-tech', { test: 'config' } as any);
+      const instance2 = await pool.acquireInstance('benchmark-tech', { test: 'config' } as any);
+      const instance3 = await pool.acquireInstance('benchmark-tech', { test: 'config' } as any);
+
+      // Should have created 3 instances
+      expect(pool.getPoolMetrics().totalInstances).toBe(3);
+      expect(pool.getPoolMetrics().activeInstances).toBe(3);
+
+      // Release one instance
+      pool.releaseInstance('benchmark-tech', instance1.client);
+      expect(pool.getPoolMetrics().activeInstances).toBe(2);
+      expect(pool.getPoolMetrics().availableInstances).toBe(1);
+
+      // Acquire another instance - should reuse the released one
+      const instance4 = await pool.acquireInstance('benchmark-tech', { test: 'config' } as any);
+
+      // Should still have only 3 total instances (reused)
+      expect(pool.getPoolMetrics().totalInstances).toBe(3);
+      expect(pool.getPoolMetrics().activeInstances).toBe(3);
+      expect(pool.getPoolMetrics().availableInstances).toBe(0);
+
+      // Try to acquire a 4th instance - should fail due to limit
+      await expect(pool.acquireInstance('benchmark-tech', { test: 'config' } as any))
+        .rejects.toThrow('RESOURCE EXHAUSTION');
+
+      // Clean up all instances
+      pool.releaseInstance('benchmark-tech', instance2.client);
+      pool.releaseInstance('benchmark-tech', instance3.client);
+      pool.releaseInstance('benchmark-tech', instance4.client);
+
       const endTime = Date.now();
-
-      // All results should be the same instance (shared)
-      const urls = results.map(r => r.server.url);
-      const uniqueUrls = new Set(urls);
-
-      // With pooling, we should reuse instances efficiently
-      // In a real scenario, fewer instances would be created than requests
-      expect(uniqueUrls.size).toBeLessThanOrEqual(urls.length);
-
-      // Clean up
-      results.forEach(result => {
-        pool.releaseInstance('benchmark-tech', result.client);
-      });
-
       console.log(`Resource pooling benchmark completed in ${endTime - startTime}ms`);
     });
 
