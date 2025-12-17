@@ -3,6 +3,8 @@ import type {
   MessagePartUpdatedEvent,
   SessionErrorEvent,
   SessionIdleEvent,
+  ToolPartUpdatedEvent,
+  ToolPart,
   EventWithSessionId,
   MessageEventProperties,
   SessionErrorProperties,
@@ -52,8 +54,31 @@ export function isSessionIdleEvent(event: Event): event is SessionIdleEvent {
   return hasProperties(event) && event.type === 'session.idle';
 }
 
+// Type guard for tool events
+export function isToolEvent(event: Event): event is ToolPartUpdatedEvent {
+  if (!hasProperties(event) || event.type !== 'message.part.updated') {
+    return false;
+  }
+
+  const props = event.properties as Partial<{ part: unknown }>;
+  if (!props.part || typeof props.part !== 'object') {
+    return false;
+  }
+
+  const part = props.part as Partial<ToolPart>;
+  return part.type === 'tool' &&
+         typeof part.callID === 'string' &&
+         typeof part.tool === 'string' &&
+         typeof part.state === 'object';
+}
+
+// Type guard for tool call start
+export function isToolCallStart(event: Event): boolean {
+  return isToolEvent(event) && event.properties.part.state.status === 'running';
+}
+
 // Type guard for text message parts
-export function isTextMessagePart(part: unknown): part is MessageEventProperties['part'] & { type: 'text' } {
+export function isTextMessagePart(part: unknown): part is Extract<MessageEventProperties['part'], { type: 'text' }> {
   return typeof part === 'object' &&
          part !== null &&
          'type' in part &&

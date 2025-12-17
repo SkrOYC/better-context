@@ -13,6 +13,7 @@ import { EventProcessor } from '../lib/event/EventProcessor.ts';
 import { EventStreamManager } from '../lib/event/EventStreamManager.ts';
 import { MessageEventHandler } from '../lib/event/handlers/MessageEventHandler.ts';
 import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.ts';
+import { ToolEventHandler } from '../lib/event/handlers/ToolEventHandler.ts';
 import { hasSessionId, isSessionIdleEvent } from '../lib/utils/type-guards.ts';
 import type { SdkEvent } from '../lib/types/events.ts';
 
@@ -862,9 +863,17 @@ export class OcService {
       },
     });
 
+    // Register tool event handler for tool call logging
+    const toolHandler = new ToolEventHandler({
+      logLevel: 'tool',
+      includeInputs: true,
+      redactSensitive: true,
+    });
+
     // Register handlers with the processor
     this.eventProcessor.registerHandler('message-handler', messageHandler);
     this.eventProcessor.registerHandler('session-handler', sessionHandler);
+    this.eventProcessor.registerHandler('tool-handler', toolHandler);
 
     logger.info('Default event handlers registered');
   }

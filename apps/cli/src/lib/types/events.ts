@@ -11,13 +11,15 @@ export interface BaseEventProperties {
   [key: string]: unknown;
 }
 
-// Message event properties
-export interface MessagePart {
-  messageID: string;
-  text?: string;
-  delta?: string;
-  type: 'text' | 'image' | 'file';
-}
+// Message event properties - union type for different part types
+export type MessagePart =
+  | {
+      messageID: string;
+      text?: string;
+      delta?: string;
+      type: 'text' | 'image' | 'file';
+    }
+  | ToolPart;
 
 export interface MessageEventProperties extends BaseEventProperties {
   part: MessagePart;
@@ -37,6 +39,24 @@ export interface SessionIdleProperties extends BaseEventProperties {
   // Session idle events typically have minimal properties
 }
 
+// Tool event properties (matches SDK ToolPart)
+export interface ToolPart {
+  id: string;
+  sessionID: string;
+  messageID: string;
+  type: "tool";
+  callID: string;
+  tool: string;
+  state: {
+    status: "pending" | "running" | "completed" | "error";
+    input: { [key: string]: unknown };
+    [key: string]: unknown;
+  };
+  metadata?: {
+    [key: string]: unknown;
+  };
+}
+
 // Discriminated union types for type-safe event handling
 export type MessagePartUpdatedEvent = Event & {
   type: 'message.part.updated';
@@ -53,8 +73,15 @@ export type SessionIdleEvent = Event & {
   properties: SessionIdleProperties;
 };
 
+export type ToolPartUpdatedEvent = Event & {
+  type: 'message.part.updated';
+  properties: {
+    part: ToolPart;
+  };
+};
+
 // Union type for all handled SDK events
-export type SdkEvent = MessagePartUpdatedEvent | SessionErrorEvent | SessionIdleEvent;
+export type SdkEvent = MessagePartUpdatedEvent | SessionErrorEvent | SessionIdleEvent | ToolPartUpdatedEvent;
 
 // Type guard helper for events with session IDs
 export type EventWithSessionId = Event & {
