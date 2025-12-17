@@ -137,23 +137,11 @@ const DEFAULT_CONFIG: Config = {
   reposDirectory: '~/.local/share/btca/repos',
   repos: [
     {
-      name: 'svelte',
-      url: 'https://github.com/sveltejs/svelte.dev',
-      branch: 'main',
-      specialNotes:
-        'This is the svelte docs website repo, not the actual svelte repo. Use the docs to answer questions about svelte.'
-    },
-    {
       name: 'tailwindcss',
       url: 'https://github.com/tailwindlabs/tailwindcss.com',
       branch: 'main',
       specialNotes:
         'This is the tailwindcss docs website repo, not the actual tailwindcss repo. Use the docs to answer questions about tailwindcss.'
-    },
-    {
-      name: 'nextjs',
-      url: 'https://github.com/vercel/next.js',
-      branch: 'canary'
     }
   ],
   model: 'big-pickle',
