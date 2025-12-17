@@ -14,10 +14,66 @@ export type { Event as OcEvent };
 
 export class OcService {
   private configService: ConfigService;
-  private sessions = new Map<string, { client: OpencodeClient; server: { close: () => void; url: string } }>();
+  private sessions = new Map<string, {
+    client: OpencodeClient;
+    server: { close: () => void; url: string };
+    createdAt: Date;
+    lastActivity: Date;
+    timeoutId?: NodeJS.Timeout;
+  }>();
+  private metrics = {
+    sessionsCreated: 0,
+    sessionsCleanedUp: 0,
+    orphanedProcessesCleaned: 0,
+    currentSessionCount: 0
+  };
 
   constructor(configService: ConfigService) {
     this.configService = configService;
+  }
+
+  private resetSessionTimeout(sessionId: string): void {
+    const sessionData = this.sessions.get(sessionId);
+    if (!sessionData) return;
+
+    // Clear existing timeout
+    if (sessionData.timeoutId) {
+      clearTimeout(sessionData.timeoutId);
+    }
+
+    // Set new timeout
+    const timeoutMs = this.configService.getSessionTimeout() * 60 * 1000;
+    sessionData.timeoutId = setTimeout(async () => {
+      await this.cleanupSession(sessionId);
+      await logger.resource(`Session ${sessionId} timed out after ${this.configService.getSessionTimeout()} minutes`);
+    }, timeoutMs);
+
+    sessionData.lastActivity = new Date();
+  }
+
+  private async cleanupSession(sessionId: string): Promise<void> {
+    const sessionData = this.sessions.get(sessionId);
+    if (sessionData) {
+      // Clear timeout if exists
+      if (sessionData.timeoutId) {
+        clearTimeout(sessionData.timeoutId);
+      }
+
+      // Close server and clean up
+      try {
+        sessionData.server.close();
+        await logger.resource(`Server closed for session ${sessionId}`);
+      } catch (error) {
+        await logger.error(`Error closing server for session ${sessionId}: ${error}`);
+      }
+
+      // Remove from tracking
+      this.sessions.delete(sessionId);
+      this.metrics.sessionsCleanedUp++;
+      this.metrics.currentSessionCount = this.sessions.size;
+
+      await logger.resource(`Session ${sessionId} cleaned up`);
+    }
   }
 
   private async getOpencodeInstance(tech: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
@@ -61,7 +117,23 @@ export class OcService {
     }
 
     const sessionID = session.data.id;
-    this.sessions.set(sessionID, { client: result.client, server: result.server });
+    const now = new Date();
+    this.sessions.set(sessionID, {
+      client: result.client,
+      server: result.server,
+      createdAt: now,
+      lastActivity: now
+    });
+
+    // Set initial timeout
+    this.resetSessionTimeout(sessionID);
+
+    // Update metrics
+    this.metrics.sessionsCreated++;
+    this.metrics.currentSessionCount = this.sessions.size;
+
+    await logger.resource(`Session ${sessionID} created for ${tech} with timeout`);
+    await logger.metrics(`Sessions created: ${this.metrics.sessionsCreated}, Active: ${this.metrics.currentSessionCount}`);
 
     return sessionID;
   }
@@ -72,6 +144,9 @@ export class OcService {
       throw new OcError('OpenCode SDK not configured', null);
     }
     const { client } = sessionData;
+
+    // Reset timeout on activity
+    this.resetSessionTimeout(sessionId);
 
     const events = await client.event.subscribe();
     let promptError: Error | null = null;
@@ -116,19 +191,96 @@ export class OcService {
   }
 
   async closeSession(sessionId: string): Promise<void> {
-    const sessionData = this.sessions.get(sessionId);
-    if (sessionData) {
-      sessionData.server.close();
-      this.sessions.delete(sessionId);
+    await this.cleanupSession(sessionId);
+  }
+
+  async cleanupAllSessions(): Promise<void> {
+    const sessionIds = Array.from(this.sessions.keys());
+    await logger.resource(`Cleaning up ${sessionIds.length} active sessions`);
+
+    for (const sessionId of sessionIds) {
+      await this.cleanupSession(sessionId);
     }
+
+    await logger.resource('All sessions cleaned up');
+  }
+
+  async cleanupOrphanedProcesses(): Promise<void> {
+    // Skip orphaned process cleanup on Windows (Unix-only feature)
+    if (process.platform === 'win32') {
+      await logger.debug('Skipping orphaned process cleanup on Windows platform');
+      return;
+    }
+
+    const basePort = 3420;
+    const maxInstances = 5;
+    const processesToClean: number[] = [];
+
+    // Check for OpenCode processes on ports 3420-3424
+    for (let port = basePort; port < basePort + maxInstances; port++) {
+      try {
+        // Use lsof to find processes using the port
+        const { stdout } = await Bun.spawn(['lsof', '-ti', `:${port}`], {
+          stdout: 'pipe',
+          stderr: 'ignore'
+        });
+
+        if (stdout) {
+          const output = await new Response(stdout).text();
+          const pid = parseInt(output.trim());
+          if (!isNaN(pid)) {
+            // Check if it's an OpenCode process
+            const cmdResult = await Bun.spawn(['ps', '-p', pid.toString(), '-o', 'comm='], {
+              stdout: 'pipe',
+              stderr: 'ignore'
+            });
+
+            const command = cmdResult?.stdout ? (await new Response(cmdResult.stdout).text()).trim() : '';
+            if (command.includes('node') || command.includes('bun') || command.includes('opencode')) {
+              processesToClean.push(pid);
+            }
+          }
+        }
+      } catch (error) {
+        // Port is likely not in use, which is fine
+      }
+    }
+
+    // Clean up orphaned processes
+    for (const pid of processesToClean) {
+      try {
+        await Bun.spawn(['kill', pid.toString()], {
+          stdout: 'ignore',
+          stderr: 'ignore'
+        });
+        await logger.resource(`Cleaned up orphaned OpenCode process ${pid}`);
+        this.metrics.orphanedProcessesCleaned++;
+      } catch (error) {
+        await logger.error(`Failed to kill process ${pid}: ${error}`);
+      }
+    }
+
+    if (processesToClean.length > 0) {
+      await logger.resource(`Cleaned up ${processesToClean.length} orphaned processes`);
+      await logger.metrics(`Orphaned processes cleaned: ${this.metrics.orphanedProcessesCleaned}`);
+    }
+  }
+
+  getMetrics() {
+    return {
+      ...this.metrics,
+      currentSessionCount: this.sessions.size
+    };
   }
 
   async askQuestion(args: { question: string; tech: string }): Promise<AsyncIterable<Event>> {
     const { question, tech } = args;
+    let result: { client: OpencodeClient; server: { close: () => void; url: string } } | null = null;
+    let sessionID: string | null = null;
 
     try {
       await logger.info(`Asking question about ${tech}: "${question}"`);
-      
+
       // Validate tech name first and provide suggestions if not found
       // This prevents attempting to clone a non-existent repo
       const allRepos = this.configService.getRepos();
@@ -140,16 +292,18 @@ export class OcService {
 
       await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: true });
 
-      const result = await this.getOpencodeInstance(tech);
+      result = await this.getOpencodeInstance(tech);
 
       const session = await result.client.session.create();
 
       if (session.error) {
+        result.server.close(); // Cleanup immediately
+        await logger.resource(`Session creation failed for ${tech}, server cleaned up`);
         await logger.error(`Failed to start OpenCode session for ${tech}: ${session.error}`);
         throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
       }
 
-      const sessionID = session.data.id;
+      sessionID = session.data.id;
       await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
 
       const events = await result.client.event.subscribe();
@@ -199,6 +353,16 @@ export class OcService {
 
       return filteredEvents;
     } catch (error) {
+      // Ensure cleanup even if error occurs after creation
+      if (result?.server) {
+        try {
+          result.server.close();
+          await logger.resource(`Server closed due to error in askQuestion for ${tech}`);
+        } catch (closeError) {
+          await logger.error(`Error closing server during cleanup: ${closeError}`);
+        }
+      }
+
       await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }

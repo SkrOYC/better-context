@@ -24,6 +24,7 @@ type Config = {
   repos: Repo[];
   model: string;
   provider: string;
+  sessionTimeoutMinutes: number;
 };
 
 const DEFAULT_CONFIG: Config = {
@@ -50,7 +51,8 @@ const DEFAULT_CONFIG: Config = {
     }
   ],
   model: 'big-pickle',
-  provider: 'opencode'
+  provider: 'opencode',
+  sessionTimeoutMinutes: 30
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -154,15 +156,25 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
       const content = await fs.readFile(configPath, 'utf-8');
       const parsed = JSON.parse(content);
       // Validate config structure
-      if (typeof parsed.reposDirectory !== 'string' || !Array.isArray(parsed.repos) || !parsed.repos.every((r: any) => r && typeof r.name === 'string' && typeof r.url === 'string' && typeof r.branch === 'string') || typeof parsed.model !== 'string' || typeof parsed.provider !== 'string') {
-        throw new Error('Config file is invalid. Ensure `reposDirectory` (string), `repos` (array of objects with `name`, `url`, `branch`), `model` (string), and `provider` (string) are correctly defined.');
+      const hasValidReposDirectory = typeof parsed.reposDirectory === 'string';
+      const hasValidReposArray = Array.isArray(parsed.repos) && parsed.repos.every((r: any) =>
+        r && typeof r.name === 'string' && typeof r.url === 'string' && typeof r.branch === 'string'
+      );
+      const hasValidModel = typeof parsed.model === 'string';
+      const hasValidProvider = typeof parsed.provider === 'string';
+      const hasValidSessionTimeout = parsed.sessionTimeoutMinutes === undefined ||
+        (typeof parsed.sessionTimeoutMinutes === 'number' && parsed.sessionTimeoutMinutes > 0);
+
+      if (!hasValidReposDirectory || !hasValidReposArray || !hasValidModel || !hasValidProvider || !hasValidSessionTimeout) {
+        throw new Error('Config file is invalid. Ensure `reposDirectory` (string), `repos` (array of objects with `name`, `url`, `branch`), `model` (string), `provider` (string), and `sessionTimeoutMinutes` (positive number, optional) are correctly defined.');
       }
       const reposDir = expandHome(parsed.reposDirectory);
       config = {
         reposDirectory: reposDir,
         repos: parsed.repos,
         model: parsed.model,
-        provider: parsed.provider
+        provider: parsed.provider,
+        sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 30
       };
     }
     // Apply environment variable overrides
@@ -273,5 +285,9 @@ export class ConfigService {
 
   getReposDirectory(): string {
     return this.config.reposDirectory;
+  }
+
+  getSessionTimeout(): number {
+    return this.config.sessionTimeoutMinutes;
   }
 }

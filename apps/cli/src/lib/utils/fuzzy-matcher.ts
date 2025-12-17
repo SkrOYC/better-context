@@ -4,7 +4,7 @@
  * (insertions, deletions, or substitutions) required to change one word into the other
  */
 const levenshteinDistance = (str1: string, str2: string): number => {
-  const matrix = Array(str2.length + 1)
+  const matrix: number[][] = Array(str2.length + 1)
     .fill(null)
     .map(() => Array(str1.length + 1).fill(null));
 
@@ -12,8 +12,11 @@ const levenshteinDistance = (str1: string, str2: string): number => {
     matrix[0][i] = i;
   }
 
-  for (let j = 0; j <= str2.length; j++) {
+  for (let j = 1; j <= str2.length; j++) {
     matrix[j][0] = j;
+    for (let k = 1; k <= str1.length; k++) {
+      matrix[j][k] = matrix[j - 1][k];
+    }
   }
 
   for (let j = 1; j <= str2.length; j++) {

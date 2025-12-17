@@ -12,20 +12,20 @@ import { logger } from '../lib/utils/logger.ts';
 const handleCommandError = (e: any): void => {
   if (e.name === 'InvalidTechError') {
     console.error(`Error: ${e.message}`);
-    process.exit(1);
+    throw e;
   } else if (e.name === 'InvalidProviderError') {
     console.error(`Error: Unknown provider "${e.providerId}"`);
     console.error(`Available providers: ${e.availableProviders.join(', ')}`);
-    process.exit(1);
+    throw e;
   } else if (e.name === 'InvalidModelError') {
     console.error(`Error: Unknown model "${e.modelId}" for provider "${e.providerId}"`);
     console.error(`Available models: ${e.availableModels.join(', ')}`);
-    process.exit(1);
+    throw e;
   } else if (e.name === 'ProviderNotConnectedError') {
     console.error(`Error: Provider "${e.providerId}" is not connected`);
     console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
     console.error(`Run "opencode auth" to configure provider credentials.`);
-    process.exit(1);
+    throw e;
   } else {
     throw e;
   }

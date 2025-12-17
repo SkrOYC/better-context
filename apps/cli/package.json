@@ -33,7 +33,8 @@
 		"setup:platforms": "bun install --cpu=x64 --os=darwin && bun install --cpu=x64 --os=linux && bun install --cpu=arm64 --os=linux && bun install --cpu=x64 --os=win32",
 		"build:artifacts": "bun run setup:platforms && bun run build && bun run build:targets",
 		"prepublishOnly": "bun run build:artifacts",
-		"check": "tsgo --noEmit"
+		"check": "tsgo --noEmit",
+		"test": "bun test"
 	},
 	"devDependencies": {
 		"@opencode-ai/sdk": "^1.0.119",
