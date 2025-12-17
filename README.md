@@ -4,7 +4,7 @@ https://btca.dev
 
 `btca` is a CLI for asking questions about libraries/frameworks by cloning their repos locally and searching the source directly.
 
-Dev docs are in the `apps/cli` directory.
+Dev docs are in the `src/` directory.
 
 ## Install
 

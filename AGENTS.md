@@ -45,26 +45,23 @@ Available <tech>: svelte, tailwindcss, opentui, runed
 ## Development Commands
 
 ### Build and Check
-- `bun run build` - Build all apps using Turbo (outputs to `.svelte-kit/` and `dist/`).
-- `bun run check` - Run type checking and linting across the monorepo using Turbo.
+- `bun run build` - Build CLI using Bun (outputs to `dist/`).
+- `bun run check` - Run type checking and linting for CLI.
 
 ### Development
-- `bun run dev` - Start development servers for all apps (persistent, no cache).
 - `bun run cli` - Run the CLI directly from source.
 
 ### Testing
-- `bun test` - Run all tests (in `apps/cli/tests/`, uses `bun:test`).
-- `bun test <file>` - Run a single test file (e.g., `bun test apps/cli/tests/basic.test.ts`).
+- `bun test` - Run all tests (in `tests/`, uses `bun:test`).
+- `bun test <file>` - Run a single test file (e.g., `bun test tests/basic.test.ts`).
 
 ### Other
-- `bun run clean` - Remove all `node_modules` directories.
 - `btca config repos clear` - Clear downloaded repositories (useful for testing).
 
 ## Architecture
 
-### Monorepo Structure
-- `apps/cli/`: Core CLI app (TypeScript + Bun), handles btca commands via services (ConfigService for settings, OcService for OpenCode SDK integration, ValidationService for config checks).
-- `apps/web/`: SvelteKit + Tailwind CSS site for docs/marketing.
+### Project Structure
+- `src/`: Core CLI app (TypeScript + Bun), handles btca commands via services (ConfigService for settings, OcService for OpenCode SDK integration, ValidationService for config checks).
 
 ### Data Flow for btca Commands
 1. CLI validates tech/repo, checks response cache (10-min TTL).
