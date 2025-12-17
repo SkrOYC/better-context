@@ -537,25 +537,15 @@ EXAMPLES:
       await logger.info(`CLI: Executing ask command for ${tech} with question: "${question}"`);
       const eventStream = await this.oc.askQuestion({ tech, question });
 
-      let currentMessageId: string | null = null;
-
+      // Event processing is now handled internally by the OcService through registered handlers
+      // The MessageEventHandler writes directly to stdout, so we just need to consume the stream
+      // to ensure all events are processed
       for await (const event of eventStream) {
-        switch (event.type) {
-          case 'message.part.updated':
-            if (event.properties.part.type === 'text') {
-              if (currentMessageId === event.properties.part.messageID) {
-                process.stdout.write(event.properties.delta ?? '');
-              } else {
-                currentMessageId = event.properties.part.messageID;
-                process.stdout.write('\n\n' + event.properties.part.text);
-              }
-            }
-            break;
-          default:
-            break;
-        }
+        // Events are processed by the registered handlers in the background
+        // No manual processing needed here anymore
       }
 
+      // Add a final newline for clean output formatting
       console.log('\n');
       await logger.info(`CLI: Ask command completed for ${tech}`);
     } catch (e: any) {
