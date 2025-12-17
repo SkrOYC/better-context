@@ -350,12 +350,15 @@ export class ResourcePool {
   private requestQueue: QueuedRequest[] = [];
   private maxQueueSize: number = 50; // Maximum queued requests
   private queueTimeoutMs: number = 30000; // 30 second queue timeout
+  private configService: ConfigService;
 
   constructor(
+    configService: ConfigService,
     maxInstancesPerTech: number = 3,
     maxTotalInstances: number = 10,
     instanceTimeoutMs: number = 30 * 60 * 1000 // 30 minutes
   ) {
+    this.configService = configService;
     this.maxInstancesPerTech = maxInstancesPerTech;
     this.maxTotalInstances = maxTotalInstances;
     this.instanceTimeoutMs = instanceTimeoutMs;
@@ -478,10 +481,33 @@ export class ResourcePool {
     }
 
     try {
-      const result = await createOpencode({
-        port,
-        config: configObject
-      });
+      // Set btca-specific OpenCode config directory
+      const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
+      process.env.OPENCODE_CONFIG_DIR = this.configService.getOpenCodeConfigDir();
+
+      try {
+        const result = await createOpencode({
+          port,
+          config: configObject
+        });
+
+        return {
+          client: result.client,
+          server: result.server,
+          tech,
+          createdAt: new Date(),
+          lastUsed: new Date(),
+          inUse: true,
+          sessionCount: 1
+        };
+      } finally {
+        // Restore original config dir
+        if (originalConfigDir !== undefined) {
+          process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
+        } else {
+          delete process.env.OPENCODE_CONFIG_DIR;
+        }
+      }
 
       return {
         client: result.client,
@@ -784,7 +810,7 @@ export class OcService {
     // Initialize resource pool with configurable limits
     const maxInstancesPerTech = this.configService.getMaxInstancesPerTech();
     const maxTotalInstances = this.configService.getMaxTotalInstances();
-    this.resourcePool = new ResourcePool(maxInstancesPerTech, maxTotalInstances);
+    this.resourcePool = new ResourcePool(this.configService, maxInstancesPerTech, maxTotalInstances);
 
     // Initialize session coordinator
     const maxConcurrentSessionsPerTech = this.configService.getMaxConcurrentSessionsPerTech();

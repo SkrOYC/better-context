@@ -33,6 +33,7 @@ type Config = {
   maxTotalInstances: number;
   maxConcurrentSessionsPerTech: number;
   maxTotalSessions: number;
+  opencodeConfigDir: string;
 };
 
 // Repository caching interfaces
@@ -144,7 +145,8 @@ const DEFAULT_CONFIG: Config = {
   maxInstancesPerTech: 3,
   maxTotalInstances: 10,
   maxConcurrentSessionsPerTech: 5,
-  maxTotalSessions: 20
+  maxTotalSessions: 20,
+  opencodeConfigDir: '~/.config/btca/opencode'
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -311,11 +313,12 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
          maxRetries: parsed.maxRetries ?? 3,
          baseBackoffMs: parsed.baseBackoffMs ?? 1000,
          maxBackoffMs: parsed.maxBackoffMs ?? 30000,
-         maxInstancesPerTech: parsed.maxInstancesPerTech ?? 3,
-         maxTotalInstances: parsed.maxTotalInstances ?? 10,
-         maxConcurrentSessionsPerTech: parsed.maxConcurrentSessionsPerTech ?? 5,
-         maxTotalSessions: parsed.maxTotalSessions ?? 20
-       };
+          maxInstancesPerTech: parsed.maxInstancesPerTech ?? 3,
+          maxTotalInstances: parsed.maxTotalInstances ?? 10,
+          maxConcurrentSessionsPerTech: parsed.maxConcurrentSessionsPerTech ?? 5,
+          maxTotalSessions: parsed.maxTotalSessions ?? 20,
+          opencodeConfigDir: parsed.opencodeConfigDir ?? expandHome('~/.config/btca/opencode')
+        };
     }
     // Apply environment variable overrides
     config.model = process.env.BTCA_MODEL || config.model;
@@ -416,6 +419,10 @@ export class ConfigService {
 
   getModel(): { provider: string; model: string } {
     return { provider: this.config.provider, model: this.config.model };
+  }
+
+  getOpenCodeConfigDir(): string {
+    return expandHome(this.config.opencodeConfigDir);
   }
 
   async updateModel(args: { provider: string; model: string }): Promise<{ provider: string; model: string }> {

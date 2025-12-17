@@ -4,6 +4,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
+import { createOpencode } from '@opencode-ai/sdk';
 import { InvalidTechError, RetryableError, NonRetryableError, StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
 import { directoryExists } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
@@ -519,11 +520,52 @@ EXAMPLES:
 
  EXAMPLE:
    $ btca config repos clear`)
-      .action(async () => {
-        await this.handleConfigReposClearCommand();
-      });
-    
-    // List command
+       .action(async () => {
+         await this.handleConfigReposClearCommand();
+       });
+
+     // Auth command
+     const authCommand = this.program
+       .command('auth')
+       .description('Manage btca authentication with AI providers')
+       .addHelpText('after', `
+ EXAMPLES:
+   $ btca auth list                    # List available providers
+   $ btca auth login --provider openai # Authenticate with OpenAI
+   $ btca auth logout --provider openai # Remove OpenAI authentication
+   $ btca auth status                  # Show authentication status`);
+
+     authCommand
+       .command('list')
+       .description('List available AI providers')
+       .action(async () => {
+         await this.handleAuthListCommand();
+       });
+
+     authCommand
+       .command('login')
+       .description('Authenticate with an AI provider')
+       .requiredOption('-p, --provider <provider>', 'Provider to authenticate with (e.g., openai, anthropic)')
+       .action(async (options) => {
+         await this.handleAuthLoginCommand(options.provider);
+       });
+
+     authCommand
+       .command('logout')
+       .description('Remove authentication for a provider')
+       .requiredOption('-p, --provider <provider>', 'Provider to logout from')
+       .action(async (options) => {
+         await this.handleAuthLogoutCommand(options.provider);
+       });
+
+     authCommand
+       .command('status')
+       .description('Show current authentication status')
+       .action(async () => {
+         await this.handleAuthStatusCommand();
+       });
+
+     // List command
     this.program
       .command('list')
       .description('List all configured technologies')
@@ -718,6 +760,109 @@ EXAMPLES:
     // Output each technology name on a separate line (clean and parseable format)
     for (const repo of repos) {
       console.log(repo.name);
+    }
+  }
+
+  private async handleAuthListCommand(): Promise<void> {
+    try {
+      // Create a temporary OpenCode client to list providers
+      const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
+      process.env.OPENCODE_CONFIG_DIR = this.config.getOpenCodeConfigDir();
+
+      try {
+        const { client, server } = await createOpencode({
+          port: 0,
+          timeout: 10000
+        });
+
+        try {
+          const response = await client.provider.list();
+          if (response.data) {
+            console.log('Available AI providers:');
+            console.log();
+            for (const [id, provider] of Object.entries(response.data.all)) {
+              console.log(`  ${id}`);
+              console.log(`    Name: ${(provider as any).name}`);
+              console.log(`    Models: ${Object.keys((provider as any).models).join(', ')}`);
+              console.log();
+            }
+          } else {
+            console.log('No providers available or unable to fetch provider list.');
+          }
+        } finally {
+          server.close();
+        }
+      } finally {
+        if (originalConfigDir !== undefined) {
+          process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
+        } else {
+          delete process.env.OPENCODE_CONFIG_DIR;
+        }
+      }
+    } catch (error) {
+      console.error(`Error listing providers: ${error}`);
+    }
+  }
+
+  private async handleAuthLoginCommand(provider: string): Promise<void> {
+    console.log(`To authenticate with ${provider}, please run:`);
+    console.log(`opencode auth login --provider ${provider}`);
+    console.log();
+    console.log('Note: This will authenticate the system-wide OpenCode CLI,');
+    console.log('which btca will then use for its own operations.');
+  }
+
+  private async handleAuthLogoutCommand(provider: string): Promise<void> {
+    console.log(`To remove authentication for ${provider}, please run:`);
+    console.log(`opencode auth logout --provider ${provider}`);
+    console.log();
+    console.log('Note: This will remove authentication from the system-wide OpenCode CLI.');
+  }
+
+  private async handleAuthStatusCommand(): Promise<void> {
+    try {
+      // Create a temporary OpenCode client to check auth status
+      const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
+      process.env.OPENCODE_CONFIG_DIR = this.config.getOpenCodeConfigDir();
+
+      try {
+        const { client, server } = await createOpencode({
+          port: 0,
+          timeout: 10000
+        });
+
+        try {
+          const response = await client.provider.list();
+          if (response.data) {
+            console.log('Authentication status:');
+            console.log();
+            const { connected, all } = response.data;
+
+            for (const providerId of Object.keys(all)) {
+              const status = connected.includes(providerId) ? 'Authenticated' : 'Not authenticated';
+              console.log(`  ${providerId}: ${status}`);
+            }
+
+            if (connected.length === 0) {
+              console.log();
+              console.log('No providers are currently authenticated.');
+              console.log('Run "btca auth login --provider <provider>" to authenticate.');
+            }
+          } else {
+            console.log('Unable to determine authentication status.');
+          }
+        } finally {
+          server.close();
+        }
+      } finally {
+        if (originalConfigDir !== undefined) {
+          process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
+        } else {
+          delete process.env.OPENCODE_CONFIG_DIR;
+        }
+      }
+    } catch (error) {
+      console.error(`Error checking auth status: ${error}`);
     }
   }
 

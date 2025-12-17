@@ -51,19 +51,32 @@ export class ValidationService {
     await logger.info(`Performing startup validation for ${provider}/${model}`);
 
     try {
-      // Create temporary OpenCode instance for validation
-      const { client, server } = await createOpencode({
-        port: 0, // Use random available port
-        timeout: 10000 // 10 second timeout
-      });
+      // Set btca-specific OpenCode config directory for validation
+      const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
+      process.env.OPENCODE_CONFIG_DIR = this.configService.getOpenCodeConfigDir();
 
       try {
-        // Validate the configured provider/model combination
-        await this.validateProviderAndModelCached(client, { provider, model });
-        await logger.info('Startup validation completed successfully');
+        // Create temporary OpenCode instance for validation
+        const { client, server } = await createOpencode({
+          port: 0, // Use random available port
+          timeout: 10000 // 10 second timeout
+        });
+
+        try {
+          // Validate the configured provider/model combination
+          await this.validateProviderAndModelCached(client, { provider, model });
+          await logger.info('Startup validation completed successfully');
+        } finally {
+          // Always clean up the temporary server
+          server.close();
+        }
       } finally {
-        // Always clean up the temporary server
-        server.close();
+        // Restore original config dir
+        if (originalConfigDir !== undefined) {
+          process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
+        } else {
+          delete process.env.OPENCODE_CONFIG_DIR;
+        }
       }
     } catch (error) {
       await logger.error(`Startup validation failed: ${error}`);
@@ -112,16 +125,29 @@ export class ValidationService {
     const { provider, model } = this.configService.getModel();
 
     try {
-      // Create temporary OpenCode instance for validation
-      const { client, server } = await createOpencode({
-        port: 0,
-        timeout: 10000
-      });
+      // Set btca-specific OpenCode config directory for validation
+      const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
+      process.env.OPENCODE_CONFIG_DIR = this.configService.getOpenCodeConfigDir();
 
       try {
-        await this.validateProviderAndModelCached(client, { provider, model }, true); // Force refresh
+        // Create temporary OpenCode instance for validation
+        const { client, server } = await createOpencode({
+          port: 0,
+          timeout: 10000
+        });
+
+        try {
+          await this.validateProviderAndModelCached(client, { provider, model }, true); // Force refresh
+        } finally {
+          server.close();
+        }
       } finally {
-        server.close();
+        // Restore original config dir
+        if (originalConfigDir !== undefined) {
+          process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
+        } else {
+          delete process.env.OPENCODE_CONFIG_DIR;
+        }
       }
     } catch (error) {
       throw new ConfigurationChangeError(
