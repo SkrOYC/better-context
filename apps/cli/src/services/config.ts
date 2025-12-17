@@ -5,6 +5,7 @@ import { getDocsAgentPrompt } from '../lib/prompts.ts';
 import { ConfigError } from '../lib/errors.ts';
 import { cloneRepo, pullRepo } from '../lib/utils/git.ts';
 import { directoryExists, expandHome } from '../lib/utils/files.ts';
+import { logger } from '../lib/utils/logger.ts';
 
 const CONFIG_DIRECTORY = '~/.config/btca';
 const CONFIG_FILENAME = 'btca.json';
@@ -188,6 +189,7 @@ export class ConfigService {
     const loaded = await onStartLoadConfig();
     this.config = loaded.config;
     this.configPath = loaded.configPath;
+    await logger.info(`Config loaded from ${this.configPath}`);
   }
 
   getConfigPath(): string {
@@ -203,15 +205,23 @@ export class ConfigService {
     const branch = repo.branch ?? 'main';
     const suppressLogs = options.suppressLogs;
 
-				const exists = await directoryExists(repoDir);
-				if (exists) {
-					if (!suppressLogs) console.log(`Pulling latest changes for ${repo.name}...`);
-					await pullRepo({ repoDir, branch });
-				} else {
-					if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
-					await cloneRepo({ repoDir, url: repo.url, branch });
-				}
-    if (!suppressLogs) console.log(`Done with ${repo.name}`);
+    try {
+      const exists = await directoryExists(repoDir);
+      if (exists) {
+        if (!suppressLogs) console.log(`Pulling latest changes for ${repo.name}...`);
+        await logger.info(`Pulling latest changes for ${repo.name} from ${repo.url} (branch: ${branch})`);
+        await pullRepo({ repoDir, branch });
+      } else {
+        if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
+        await logger.info(`Cloning ${repo.name} from ${repo.url} (branch: ${branch})`);
+        await cloneRepo({ repoDir, url: repo.url, branch });
+      }
+      if (!suppressLogs) console.log(`Done with ${repo.name}`);
+      await logger.info(`${repo.name} operation completed successfully`);
+    } catch (error) {
+      await logger.error(`Failed to clone/update repo ${repo.name}: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
     return repo;
   }
 

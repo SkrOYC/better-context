@@ -6,6 +6,7 @@ import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
 import { InvalidTechError } from '../lib/errors.ts';
 import { directoryExists } from '../lib/utils/files.ts';
+import { logger } from '../lib/utils/logger.ts';
 
 // Shared error handling function to avoid duplication
 const handleCommandError = (e: any): void => {
@@ -517,6 +518,7 @@ EXAMPLES:
 
   private async handleAskCommand(question: string, tech: string): Promise<void> {
     try {
+      await logger.info(`CLI: Executing ask command for ${tech} with question: "${question}"`);
       const eventStream = await this.oc.askQuestion({ tech, question });
 
       let currentMessageId: string | null = null;
@@ -539,18 +541,23 @@ EXAMPLES:
       }
 
       console.log('\n');
+      await logger.info(`CLI: Ask command completed for ${tech}`);
     } catch (e: any) {
+      await logger.error(`CLI: Error in ask command for ${tech}: ${e instanceof Error ? e.message : String(e)}`);
       handleCommandError(e);
     }
   }
 
   private async handleConfigModelCommand(provider?: string, model?: string): Promise<void> {
     if (provider && model) {
+      await logger.info(`CLI: Updating model configuration - provider: ${provider}, model: ${model}`);
       const result = await this.config.updateModel({ provider, model });
       console.log(`Updated model configuration:`);
       console.log(`  Provider: ${result.provider}`);
       console.log(`  Model: ${result.model}`);
+      await logger.info(`CLI: Model configuration updated successfully`);
     } else if (provider || model) {
+      await logger.warn(`CLI: Invalid model command - both provider and model must be specified together`);
       console.error('Error: Both --provider and --model must be specified together');
       process.exit(1);
     } else {
@@ -558,14 +565,17 @@ EXAMPLES:
       console.log(`Current model configuration:`);
       console.log(`  Provider: ${current.provider}`);
       console.log(`  Model: ${current.model}`);
+      await logger.info(`CLI: Viewed current model configuration`);
     }
   }
 
   private async handleConfigReposListCommand(): Promise<void> {
+    await logger.info(`CLI: Listing configured repos`);
     const repos = await this.config.getRepos();
 
     if (repos.length === 0) {
       console.log('No repos configured.');
+      await logger.info(`CLI: No repos configured`);
       return;
     }
 
@@ -579,6 +589,7 @@ EXAMPLES:
       }
       console.log();
     }
+    await logger.info(`CLI: Listed ${repos.length} configured repos`);
   }
 
   private async handleConfigReposAddCommand(name: string, url: string, branch: string, notes?: string): Promise<void> {
@@ -590,6 +601,7 @@ EXAMPLES:
     };
 
     try {
+      await logger.info(`CLI: Adding repo ${name} with URL: ${url}, branch: ${branch}`);
       await this.config.addRepo(repo);
       console.log(`Added repo "${name}":`);
       console.log(`  URL: ${url}`);
@@ -597,7 +609,9 @@ EXAMPLES:
       if (notes) {
         console.log(`  Notes: ${notes}`);
       }
+      await logger.info(`CLI: Successfully added repo ${name}`);
     } catch (e: any) {
+      await logger.error(`CLI: Failed to add repo ${name}: ${e.message}`);
       console.error(`Error: ${e.message}`);
       process.exit(1);
     }
@@ -607,6 +621,7 @@ EXAMPLES:
     const repos = await this.config.getRepos();
     const exists = repos.find((r) => r.name === name);
     if (!exists) {
+      await logger.warn(`CLI: Attempted to remove non-existent repo ${name}`);
       console.error(`Error: Repo "${name}" not found.`);
       process.exit(1);
     }
@@ -614,20 +629,25 @@ EXAMPLES:
     const confirmed = await askConfirmation(`Are you sure you want to remove repo "${name}" from config? (y/N): `);
 
     if (!confirmed) {
+      await logger.info(`CLI: Repo removal for ${name} cancelled by user`);
       console.log('Aborted.');
       return;
     }
 
     try {
+      await logger.info(`CLI: Removing repo ${name}`);
       await this.config.removeRepo(name);
       console.log(`Removed repo "${name}".`);
+      await logger.info(`CLI: Successfully removed repo ${name}`);
     } catch (e: any) {
+      await logger.error(`CLI: Failed to remove repo ${name}: ${e.message}`);
       console.error(`Error: ${e.message}`);
       process.exit(1);
     }
   }
 
   private async handleConfigReposClearCommand(): Promise<void> {
+    await logger.info(`CLI: Clearing all downloaded repos`);
     const reposDir = await this.config.getReposDirectory();
 
     // Check if repos directory exists
@@ -635,6 +655,7 @@ EXAMPLES:
 
     if (!exists) {
       console.log('Repos directory does not exist. Nothing to clear.');
+      await logger.info(`CLI: Repos directory does not exist, nothing to clear`);
       return;
     }
 
@@ -652,6 +673,7 @@ EXAMPLES:
 
     if (repoPaths.length === 0) {
       console.log('No repos found in the repos directory. Nothing to clear.');
+      await logger.info(`CLI: No repos found in directory, nothing to clear`);
       return;
     }
 
@@ -664,6 +686,7 @@ EXAMPLES:
     const confirmed = await askConfirmation('Are you sure you want to delete these repos? (y/N): ');
 
     if (!confirmed) {
+      await logger.info(`CLI: Repo clearing cancelled by user`);
       console.log('Aborted.');
       return;
     }
@@ -671,9 +694,11 @@ EXAMPLES:
     for (const repoPath of repoPaths) {
       await fs.rm(repoPath, { recursive: true });
       console.log(`Deleted: ${repoPath}`);
+      await logger.info(`CLI: Deleted repo at ${repoPath}`);
     }
 
     console.log('\nAll repos have been cleared.');
+    await logger.info(`CLI: All repos have been cleared successfully`);
   }
 
   private async handleListCommand(): Promise<void> {
