@@ -12,6 +12,8 @@ import { EventProcessor } from '../lib/event/EventProcessor.ts';
 import { EventStreamManager } from '../lib/event/EventStreamManager.ts';
 import { MessageEventHandler } from '../lib/event/handlers/MessageEventHandler.ts';
 import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.ts';
+import { hasSessionId, isSessionIdleEvent } from '../lib/utils/type-guards.ts';
+import type { SdkEvent } from '../lib/types/events.ts';
 
 export type { Event as OcEvent };
 
@@ -607,11 +609,18 @@ export class OcService {
           if (promptError) {
             throw promptError;
           }
-          const props = event.properties;
-          if (!('sessionID' in props) || props.sessionID === sessionId) {
+
+          // Type-safe event filtering
+          if (!hasSessionId(event) || event.properties.sessionID === sessionId) {
             if (event.type === 'session.error') {
-              const props = event.properties as { error?: { name?: string } };
-              throw new OcError(props.error?.name ?? 'Unknown session error', props.error);
+              // Type-safe error handling - session errors have error properties
+              const errorEvent = event as SdkEvent;
+              if ('properties' in errorEvent && errorEvent.properties.error) {
+                const errorDetails = errorEvent.properties.error;
+                throw new OcError((errorDetails as any).name ?? 'Unknown session error', errorDetails);
+              } else {
+                throw new OcError('Unknown session error', undefined);
+              }
             }
             yield event;
           }
@@ -788,12 +797,10 @@ export class OcService {
                 break; // Stop yielding events after session completion
               }
 
-              const props = event.properties as any;
-
-              // Check if this event belongs to our session
-              if (!('sessionID' in props) || props.sessionID === sessionID) {
-                // Handle session completion
-                if (event.type === 'session.idle' && props.sessionID === sessionID) {
+              // Type-safe event filtering and session completion handling
+              if (!hasSessionId(event) || event.properties.sessionID === sessionID) {
+                // Handle session completion with type-safe idle event checking
+                if (isSessionIdleEvent(event) && event.properties.sessionID === sessionID) {
                   sessionCompleted = true;
                   await logger.info(`Session ${sessionID} completed for ${tech}`);
                   // Release instance back to pool after session completes
