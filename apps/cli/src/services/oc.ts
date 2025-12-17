@@ -5,6 +5,7 @@ import {
   type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
+import path from 'node:path';
 import { OcError, InvalidTechError, RetryableError, NonRetryableError } from '../lib/errors.ts';
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
 import { logger } from '../lib/utils/logger.ts';
@@ -38,6 +39,7 @@ export interface CacheMetrics {
 export interface PooledSession {
   sessionId: string;
   tech: string;
+  directory: string;
   client: OpencodeClient;
   server: { close: () => void; url: string };
   createdAt: Date;
@@ -51,7 +53,7 @@ export class SessionPool {
   private sessionTimeoutMs: number = 10 * 60 * 1000; // 10 minutes default
 
   constructor(sessionTimeoutMs?: number) {
-    if (sessionTimeoutMs) {
+    if (sessionTimeoutMs !== undefined) {
       this.sessionTimeoutMs = sessionTimeoutMs;
     }
   }
@@ -472,10 +474,11 @@ export class ResourcePool {
       }
     }
 
-    let port = 3420;
+    let port = this.configService.getOpenCodeBasePort();
+    const maxPort = port + this.configService.getOpenCodePortRange() - 1;
     while (usedPorts.has(port)) {
       port++;
-      if (port > 4000) { // Reasonable upper limit
+      if (port > maxPort) {
         throw new OcError('RESOURCE EXHAUSTION: No available ports for new instance', null);
       }
     }
@@ -801,11 +804,11 @@ export class OcService {
   constructor(configService: ConfigService) {
     this.configService = configService;
 
-    // Initialize response cache with 10-minute TTL
-    this.responseCache = new ResponseCache(10 * 60 * 1000);
+    // Initialize response cache with configurable TTL
+    this.responseCache = new ResponseCache(this.configService.getResponseCacheTtlMs());
 
     // Initialize session pool for reusing sessions across same-tech queries
-    this.sessionPool = new SessionPool(15 * 60 * 1000); // 15 minute session reuse timeout
+    this.sessionPool = new SessionPool(this.configService.getSessionReuseTimeoutMs());
 
     // Initialize resource pool with configurable limits
     const maxInstancesPerTech = this.configService.getMaxInstancesPerTech();
@@ -1019,12 +1022,12 @@ export class OcService {
       return;
     }
 
-    const basePort = 3420;
-    const maxInstances = 5;
+    const basePort = this.configService.getOpenCodeBasePort();
+    const portRange = this.configService.getOpenCodePortRange();
     const processesToClean: number[] = [];
 
-    // Check for OpenCode processes on ports 3420-3424
-    for (let port = basePort; port < basePort + maxInstances; port++) {
+    // Check for OpenCode processes on configured port range
+    for (let port = basePort; port < basePort + portRange; port++) {
       try {
         // Use lsof to find processes using the port
         const { stdout } = await Bun.spawn(['lsof', '-ti', `:${port}`], {
@@ -1145,13 +1148,26 @@ export class OcService {
         // Try to reuse an existing session from the pool first
         let pooledSession = this.sessionPool.getAvailableSession(tech);
         let sessionCreated = false;
+        const expectedDirectory = path.join(this.configService.getReposDirectory(), tech);
 
-        if (pooledSession) {
+        if (pooledSession && pooledSession.directory === expectedDirectory) {
           sessionID = pooledSession.sessionId;
-          await logger.resource(`Reusing pooled session ${sessionID} for ${tech}`);
+          await logger.resource(`Reusing pooled session ${sessionID} for ${tech} (directory validated: ${pooledSession.directory})`);
         } else {
+          if (pooledSession) {
+            await logger.info(`Pooled session ${pooledSession.sessionId} has incorrect directory (${pooledSession.directory} vs ${expectedDirectory}), creating new session`);
+            // Mark the invalid session as inactive so it gets cleaned up
+            this.sessionPool.markSessionInactive(pooledSession.sessionId);
+          }
           // Create new session if none available in pool
-          const session = await result.client.session.create();
+          const repoPath = path.join(this.configService.getReposDirectory(), tech);
+          await logger.info(`Creating session for ${tech} with working directory: ${repoPath}`);
+
+          const session = await result.client.session.create({
+            query: {
+              directory: repoPath
+            }
+          });
 
           if (session.error) {
             this.resourcePool.releaseInstance(tech, result.client); // Release back to pool
@@ -1169,6 +1185,7 @@ export class OcService {
           this.sessionPool.addSession({
             sessionId: sessionID,
             tech,
+            directory: repoPath,
             client: result.client,
             server: result.server,
             createdAt: now,
@@ -1256,7 +1273,7 @@ export class OcService {
 
             // Cache the collected events after streaming is complete
             if (allEvents.length > 0) {
-              await self.responseCache.set(cacheKey, tech, allEvents, 10 * 60 * 1000); // 10 minute TTL
+              await self.responseCache.set(cacheKey, tech, allEvents, self.configService.getResponseCacheTtlMs());
               await logger.resource(`Cached ${allEvents.length} events for question about ${tech}`);
             }
           }
