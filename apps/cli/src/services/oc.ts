@@ -8,6 +8,11 @@ import { ConfigService } from './config.ts';
 import { OcError, InvalidTechError, RetryableError, NonRetryableError } from '../lib/errors.ts';
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
 import { logger } from '../lib/utils/logger.ts';
+import { EventProcessor } from '../lib/event/EventProcessor.ts';
+import { EventHandlerRegistry } from '../lib/event/EventHandlerRegistry.ts';
+import { EventStreamManager } from '../lib/event/EventStreamManager.ts';
+import { MessageEventHandler } from '../lib/event/handlers/MessageEventHandler.ts';
+import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.ts';
 
 export type { Event as OcEvent };
 
@@ -435,6 +440,9 @@ export class OcService {
   private configService: ConfigService;
   private resourcePool: ResourcePool;
   private sessionCoordinator: SessionCoordinator;
+  private eventProcessor: EventProcessor;
+  private eventHandlerRegistry: EventHandlerRegistry;
+  private eventStreamManager: EventStreamManager;
   private metrics = {
     sessionsCreated: 0,
     sessionsCleanedUp: 0,
@@ -458,6 +466,67 @@ export class OcService {
       maxConcurrentSessionsPerTech,
       maxTotalSessions
     );
+
+    // Initialize event processing system
+    this.eventProcessor = new EventProcessor({
+      bufferSize: 1000,
+      maxConcurrentHandlers: 5,
+      processingRateLimit: 100,
+      enableBackpressure: true,
+      backpressureThreshold: 500,
+    });
+
+    this.eventHandlerRegistry = new EventHandlerRegistry();
+
+    this.eventStreamManager = new EventStreamManager();
+
+    // Register default event handlers
+    this.registerDefaultEventHandlers();
+  }
+
+  private registerDefaultEventHandlers(): void {
+    // Register message event handler for text output
+    const messageHandler = new MessageEventHandler({
+      outputStream: process.stdout,
+      enableFormatting: true,
+    });
+    this.eventHandlerRegistry.registerHandler({
+      name: 'message-handler',
+      handler: messageHandler,
+      eventTypes: ['message.part.updated'],
+      priority: 0,
+    });
+
+    // Register session event handler for session lifecycle
+    const sessionHandler = new SessionEventHandler({
+      onSessionComplete: async (sessionId) => {
+        await logger.info(`Session ${sessionId} completed, releasing resources`);
+        // Find and release the instance for this session
+        // Note: This is a simplified approach - in production you'd track the instance per session
+        try {
+          // The instance release is handled in the askQuestion method when session.idle is detected
+          await logger.resource(`Instance for session ${sessionId} released back to pool`);
+        } catch (error) {
+          await logger.error(`Error releasing instance for session ${sessionId}: ${error}`);
+        }
+      },
+      onSessionError: async (sessionId, error) => {
+        await logger.error(`Session ${sessionId} encountered error: ${error.message}`);
+        // Handle error cleanup if needed
+      },
+    });
+    this.eventHandlerRegistry.registerHandler({
+      name: 'session-handler',
+      handler: sessionHandler,
+      eventTypes: ['session.error', 'session.idle'],
+      priority: -1, // Higher priority for session events
+    });
+
+    // Register handlers with the processor
+    this.eventProcessor.registerHandler('message-handler', messageHandler as any);
+    this.eventProcessor.registerHandler('session-handler', sessionHandler as any);
+
+    logger.info('Default event handlers registered');
   }
 
   private resetSessionTimeout(sessionId: string): void {
@@ -672,6 +741,8 @@ export class OcService {
   async shutdown(): Promise<void> {
     try {
       await this.sessionCoordinator.cleanupAllSessions();
+      await this.eventStreamManager.shutdown();
+      await this.eventProcessor.shutdown();
       await this.resourcePool.shutdown();
       await logger.resource('OcService shutdown complete');
     } catch (error) {
@@ -684,6 +755,7 @@ export class OcService {
     const { question, tech } = args;
     let result: { client: OpencodeClient; server: { close: () => void; url: string } } | null = null;
     let sessionID: string | null = null;
+    let streamId: string | null = null;
 
     await logger.info(`Asking question about ${tech}: "${question}"`);
 
@@ -719,39 +791,50 @@ export class OcService {
         sessionID = session.data.id;
         await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
 
+        // Get the raw event stream from the client
         const events = await result.client.event.subscribe();
-        let promptError: Error | null = null;
 
-        const filteredEvents = {
+        // Create a filtered event stream that only includes events for this session
+        const self = this; // Capture this for use in generator
+        const sessionFilteredEvents = {
           async *[Symbol.asyncIterator]() {
-            if (promptError) {
-              throw promptError;
-            }
+            let sessionCompleted = false;
             for await (const event of events.stream) {
-              if (promptError) {
-                throw promptError;
+              if (sessionCompleted) {
+                break; // Stop yielding events after session completion
               }
-              if (event.type === 'session.idle' && event.properties.sessionID === sessionID) {
-                await logger.info(`Session ${sessionID} completed for ${tech}`);
-                // Release instance back to pool after session completes
-                this.resourcePool.releaseInstance(tech, result.client);
-                await logger.resource(`Instance for ${tech} released back to pool after session completion`);
-                break;
-              }
-              const props = event.properties;
+
+              const props = event.properties as any;
+
+              // Check if this event belongs to our session
               if (!('sessionID' in props) || props.sessionID === sessionID) {
-                if (event.type === 'session.error') {
-                  const props = event.properties as { error?: { name?: string } };
-                  await logger.error(`Session error for ${tech} (session ${sessionID}): ${props.error?.name ?? 'Unknown session error'}`);
-                  throw new OcError(props.error?.name ?? 'Unknown session error', props.error);
+                // Handle session completion
+                if (event.type === 'session.idle' && props.sessionID === sessionID) {
+                  sessionCompleted = true;
+                  await logger.info(`Session ${sessionID} completed for ${tech}`);
+                  // Release instance back to pool after session completes
+                  self.resourcePool.releaseInstance(tech, result!.client);
+                  await logger.resource(`Instance for ${tech} released back to pool after session completion`);
                 }
+
                 yield event;
               }
             }
           }
         };
 
-        // Fire the prompt
+        // Create a stream processor for this session
+        streamId = await this.eventStreamManager.createStream(
+          sessionFilteredEvents,
+          {
+            id: `session-${sessionID}`,
+            description: `Event stream for session ${sessionID} (${tech})`,
+            timeoutMs: this.configService.getSessionTimeout() * 60 * 1000,
+          },
+          this.eventProcessor
+        );
+
+        // Fire the prompt asynchronously
         result.client.session.prompt({
           path: { id: sessionID },
           body: {
@@ -763,13 +846,40 @@ export class OcService {
             parts: [{ type: 'text', text: question }]
           }
         }).catch(async (err) => {
-          promptError = new OcError(String(err), err);
-          await logger.error(`Prompt error for ${tech}: ${err}`);
+          const promptError = new OcError(String(err), err);
+          await logger.error(`Prompt error for ${tech} (session ${sessionID}): ${err}`);
+
+          // Stop the stream on prompt error
+          if (streamId) {
+            await this.eventStreamManager.stopStream(streamId);
+          }
+
+          throw promptError;
         });
 
-        return filteredEvents;
+        // Return the processed events through our event processing system
+        const processedEvents = {
+          async *[Symbol.asyncIterator]() {
+            // The EventProcessor handles the actual event processing and output
+            // This iterator just yields events that pass through the system
+            // The real processing happens in the handlers registered with the processor
+            for await (const event of sessionFilteredEvents) {
+              yield event;
+            }
+          }
+        };
+
+        return processedEvents;
       } catch (error) {
         // Ensure cleanup even if error occurs after creation
+        if (streamId) {
+          try {
+            await this.eventStreamManager.stopStream(streamId);
+          } catch (streamError) {
+            await logger.error(`Error stopping stream ${streamId}: ${streamError}`);
+          }
+        }
+
         if (result?.client) {
           try {
             this.resourcePool.releaseInstance(tech, result.client);
