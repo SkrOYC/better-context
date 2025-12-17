@@ -1,4 +1,4 @@
-import { createOpencode } from '@opencode-ai/sdk';
+import { createOpencode, type OpencodeClient } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
 import { validateProviderAndModel } from '../lib/utils/validation.ts';
 import { ValidationCache, validationCache, type ValidationKey } from '../lib/utils/validation-cache.ts';
@@ -72,7 +72,7 @@ export class ValidationService {
   }
 
   async validateProviderAndModelCached(
-    client: any,
+    client: OpencodeClient,
     key: ValidationKey,
     forceRefresh = false
   ): Promise<void> {
@@ -99,7 +99,7 @@ export class ValidationService {
       await logger.debug(`Validation successful and cached for ${key.provider}/${key.model}`);
 
     } catch (error) {
-      // Cache failed validation (with shorter TTL for failed validations)
+      // Cache failed validation
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.cache.set(key, { isValid: false, error: errorMessage });
 

@@ -131,19 +131,7 @@ test("ConfigService updateModel preserves config on validation failure", async (
   const validationService = new ValidationService(configService);
   await validationService.initialize({ skipNetworkValidation: true });
 
-  const originalConfig = { ...configService.rawConfig() };
-
-  // Mock updateModel to simulate validation failure
-  const mockUpdateModel = async (args: { provider: string; model: string }) => {
-    const oldConfig = { ...configService.rawConfig() };
-    configService['config'] = { ...configService['config'], ...args };
-
-    // Simulate validation failure
-    configService['config'] = oldConfig;
-    throw new ConfigurationChangeError("Validation failed", new Error("Test error"));
-  };
-
-  // Since we can't easily mock, we'll test the error type contract
+  // Test that updateModel properly handles validation errors
   try {
     await configService.updateModel({ provider: "invalid", model: "model" });
   } catch (error) {

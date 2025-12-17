@@ -109,6 +109,7 @@ export class ValidationCache {
 export const validationCache = new ValidationCache();
 
 // Periodic cleanup to prevent memory leaks
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   validationCache.cleanup();
 }, 60 * 1000); // Clean up every minute
+cleanupInterval.unref();
