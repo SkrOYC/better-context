@@ -28,6 +28,10 @@ type Config = {
   maxRetries: number;
   baseBackoffMs: number;
   maxBackoffMs: number;
+  maxInstancesPerTech: number;
+  maxTotalInstances: number;
+  maxConcurrentSessionsPerTech: number;
+  maxTotalSessions: number;
 };
 
 const DEFAULT_CONFIG: Config = {
@@ -58,7 +62,11 @@ const DEFAULT_CONFIG: Config = {
   sessionTimeoutMinutes: 30,
   maxRetries: 3,
   baseBackoffMs: 1000,
-  maxBackoffMs: 30000
+  maxBackoffMs: 30000,
+  maxInstancesPerTech: 3,
+  maxTotalInstances: 10,
+  maxConcurrentSessionsPerTech: 5,
+  maxTotalSessions: 20
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -176,8 +184,16 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
          (typeof parsed.baseBackoffMs === 'number' && parsed.baseBackoffMs > 0);
        const hasValidMaxBackoff = parsed.maxBackoffMs === undefined ||
          (typeof parsed.maxBackoffMs === 'number' && parsed.maxBackoffMs > 0);
+       const hasValidMaxInstancesPerTech = parsed.maxInstancesPerTech === undefined ||
+         (typeof parsed.maxInstancesPerTech === 'number' && parsed.maxInstancesPerTech > 0);
+       const hasValidMaxTotalInstances = parsed.maxTotalInstances === undefined ||
+         (typeof parsed.maxTotalInstances === 'number' && parsed.maxTotalInstances > 0);
+       const hasValidMaxConcurrentSessionsPerTech = parsed.maxConcurrentSessionsPerTech === undefined ||
+         (typeof parsed.maxConcurrentSessionsPerTech === 'number' && parsed.maxConcurrentSessionsPerTech > 0);
+       const hasValidMaxTotalSessions = parsed.maxTotalSessions === undefined ||
+         (typeof parsed.maxTotalSessions === 'number' && parsed.maxTotalSessions > 0);
 
-       if (!hasValidReposDirectory || !hasValidReposArray || !hasValidModel || !hasValidProvider || !hasValidSessionTimeout || !hasValidMaxRetries || !hasValidBaseBackoff || !hasValidMaxBackoff) {
+       if (!hasValidReposDirectory || !hasValidReposArray || !hasValidModel || !hasValidProvider || !hasValidSessionTimeout || !hasValidMaxRetries || !hasValidBaseBackoff || !hasValidMaxBackoff || !hasValidMaxInstancesPerTech || !hasValidMaxTotalInstances || !hasValidMaxConcurrentSessionsPerTech || !hasValidMaxTotalSessions) {
          throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
 - \`reposDirectory\` (string)
 - \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)
@@ -186,7 +202,11 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 - \`sessionTimeoutMinutes\` (positive number, optional)
 - \`maxRetries\` (non-negative number, optional)
 - \`baseBackoffMs\` (positive number, optional)
-- \`maxBackoffMs\` (positive number, optional)`);
+- \`maxBackoffMs\` (positive number, optional)
+- \`maxInstancesPerTech\` (positive number, optional)
+- \`maxTotalInstances\` (positive number, optional)
+- \`maxConcurrentSessionsPerTech\` (positive number, optional)
+- \`maxTotalSessions\` (positive number, optional)`);
        }
       const reposDir = expandHome(parsed.reposDirectory);
        config = {
@@ -197,7 +217,11 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
          sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 30,
          maxRetries: parsed.maxRetries ?? 3,
          baseBackoffMs: parsed.baseBackoffMs ?? 1000,
-         maxBackoffMs: parsed.maxBackoffMs ?? 30000
+         maxBackoffMs: parsed.maxBackoffMs ?? 30000,
+         maxInstancesPerTech: parsed.maxInstancesPerTech ?? 3,
+         maxTotalInstances: parsed.maxTotalInstances ?? 10,
+         maxConcurrentSessionsPerTech: parsed.maxConcurrentSessionsPerTech ?? 5,
+         maxTotalSessions: parsed.maxTotalSessions ?? 20
        };
     }
     // Apply environment variable overrides
@@ -324,5 +348,21 @@ export class ConfigService {
 
   getMaxBackoffMs(): number {
     return this.config.maxBackoffMs;
+  }
+
+  getMaxInstancesPerTech(): number {
+    return this.config.maxInstancesPerTech;
+  }
+
+  getMaxTotalInstances(): number {
+    return this.config.maxTotalInstances;
+  }
+
+  getMaxConcurrentSessionsPerTech(): number {
+    return this.config.maxConcurrentSessionsPerTech;
+  }
+
+  getMaxTotalSessions(): number {
+    return this.config.maxTotalSessions;
   }
 }
