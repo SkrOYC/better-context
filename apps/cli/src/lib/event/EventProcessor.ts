@@ -30,8 +30,8 @@ export class EventProcessor {
   constructor(options: EventProcessingOptions = {}) {
     this.options = {
       bufferSize: options.bufferSize ?? 1000,
-      maxConcurrentHandlers: options.maxConcurrentHandlers ?? 10,
-      processingRateLimit: options.processingRateLimit ?? 100,
+      maxConcurrentHandlers: options.maxConcurrentHandlers ?? 20, // Increased default for better parallelization
+      processingRateLimit: options.processingRateLimit ?? 1000, // Increased default to reduce artificial throttling
       enableBackpressure: options.enableBackpressure ?? true,
       backpressureThreshold: options.backpressureThreshold ?? 500,
     };

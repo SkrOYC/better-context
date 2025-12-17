@@ -85,8 +85,18 @@ export class EventStreamManager {
   private async processStream(activeStream: ActiveStream, eventStream: AsyncIterable<Event>): Promise<void> {
     const { id, config } = activeStream;
 
+    // Create a counting wrapper around the event stream
+    const countingEventStream = {
+      async *[Symbol.asyncIterator]() {
+        for await (const event of eventStream) {
+          activeStream.eventCount++;
+          yield event;
+        }
+      }
+    };
+
     try {
-      await activeStream.processor.processEventStream(eventStream);
+      await activeStream.processor.processEventStream(countingEventStream);
       this.markStreamCompleted(id);
     } catch (error) {
       this.markStreamError(id, error instanceof Error ? error : new Error(String(error)));

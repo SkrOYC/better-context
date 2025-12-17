@@ -17,6 +17,262 @@ import type { SdkEvent } from '../lib/types/events.ts';
 
 export type { Event as OcEvent };
 
+// Response caching interfaces
+export interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  ttl: number; // Time to live in milliseconds
+  hits: number;
+  lastAccessed: number;
+}
+
+export interface CacheMetrics {
+  totalEntries: number;
+  hits: number;
+  misses: number;
+  evictions: number;
+  hitRate: number;
+}
+
+// Session reuse interfaces
+export interface PooledSession {
+  sessionId: string;
+  tech: string;
+  client: OpencodeClient;
+  server: { close: () => void; url: string };
+  createdAt: Date;
+  lastUsed: Date;
+  isActive: boolean;
+}
+
+export class SessionPool {
+  private sessions = new Map<string, PooledSession[]>(); // tech -> sessions
+  private sessionIdToTech = new Map<string, string>(); // sessionId -> tech (secondary index)
+  private sessionTimeoutMs: number = 10 * 60 * 1000; // 10 minutes default
+
+  constructor(sessionTimeoutMs?: number) {
+    if (sessionTimeoutMs) {
+      this.sessionTimeoutMs = sessionTimeoutMs;
+    }
+  }
+
+  addSession(session: PooledSession): void {
+    const tech = session.tech;
+    if (!this.sessions.has(tech)) {
+      this.sessions.set(tech, []);
+    }
+    this.sessions.get(tech)!.push(session);
+    this.sessionIdToTech.set(session.sessionId, tech); // Maintain index
+  }
+
+  getAvailableSession(tech: string): PooledSession | null {
+    const techSessions = this.sessions.get(tech) || [];
+    const now = Date.now();
+
+    // Find an available session that's not expired
+    for (const session of techSessions) {
+      if (session.isActive && (now - session.lastUsed.getTime()) < this.sessionTimeoutMs) {
+        session.lastUsed = new Date();
+        return session;
+      }
+    }
+
+    return null;
+  }
+
+  markSessionInactive(sessionId: string): void {
+    const tech = this.sessionIdToTech.get(sessionId);
+    if (!tech) return;
+
+    const techSessions = this.sessions.get(tech) || [];
+    const session = techSessions.find(s => s.sessionId === sessionId);
+    if (session) {
+      session.isActive = false;
+    }
+  }
+
+  cleanupExpiredSessions(): number {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [tech, techSessions] of this.sessions.entries()) {
+      const activeSessions = techSessions.filter(session =>
+        session.isActive && (now - session.lastUsed.getTime()) < this.sessionTimeoutMs
+      );
+
+      const removedCount = techSessions.length - activeSessions.length;
+      cleanedCount += removedCount;
+
+      if (activeSessions.length > 0) {
+        this.sessions.set(tech, activeSessions);
+      } else {
+        this.sessions.delete(tech);
+        // Remove from index when tech is deleted
+        for (const session of techSessions) {
+          this.sessionIdToTech.delete(session.sessionId);
+        }
+      }
+    }
+
+    return cleanedCount;
+  }
+
+  getStats() {
+    const allSessions = Array.from(this.sessions.values()).flat();
+    const now = Date.now();
+
+    return {
+      totalSessions: allSessions.length,
+      activeSessions: allSessions.filter(s => s.isActive).length,
+      sessionsByTech: Object.fromEntries(
+        Array.from(this.sessions.entries()).map(([tech, sessions]) => [
+          tech,
+          sessions.filter(s => s.isActive).length
+        ])
+      ),
+      averageSessionAge: allSessions.length > 0
+        ? allSessions.reduce((sum, s) => sum + (now - s.createdAt.getTime()), 0) / allSessions.length
+        : 0,
+    };
+  }
+
+  clear(): void {
+    this.sessions.clear();
+    this.sessionIdToTech.clear();
+  }
+}
+
+export class ResponseCache {
+  private cache = new Map<string, CacheEntry<any>>();
+  private metrics = {
+    totalEntries: 0,
+    hits: 0,
+    misses: 0,
+    evictions: 0,
+  };
+
+  constructor(private defaultTtlMs: number = 5 * 60 * 1000) {} // 5 minutes default
+
+  private generateKey(query: string, tech: string, additionalParams?: Record<string, any>): string {
+    const params = additionalParams ? JSON.stringify(additionalParams) : '';
+    return `${tech}:${query}:${params}`;
+  }
+
+  async get<T>(query: string, tech: string, additionalParams?: Record<string, any>): Promise<T | null> {
+    const key = this.generateKey(query, tech, additionalParams);
+    const entry = this.cache.get(key);
+
+    if (!entry) {
+      this.metrics.misses++;
+      return null;
+    }
+
+    // Check if expired
+    const now = Date.now();
+    if (now - entry.timestamp > entry.ttl) {
+      this.cache.delete(key);
+      this.metrics.evictions++;
+      this.metrics.totalEntries--;
+      this.metrics.misses++;
+      return null;
+    }
+
+    // Update access statistics
+    entry.hits++;
+    entry.lastAccessed = now;
+    this.metrics.hits++;
+
+    return entry.data;
+  }
+
+  async set<T>(
+    query: string,
+    tech: string,
+    data: T,
+    ttlMs?: number,
+    additionalParams?: Record<string, any>
+  ): Promise<void> {
+    const key = this.generateKey(query, tech, additionalParams);
+    const now = Date.now();
+
+    const entry: CacheEntry<T> = {
+      data,
+      timestamp: now,
+      ttl: ttlMs ?? this.defaultTtlMs,
+      hits: 0,
+      lastAccessed: now,
+    };
+
+    this.cache.set(key, entry);
+    this.metrics.totalEntries++;
+
+    // Periodic cleanup to prevent memory leaks
+    if (this.metrics.totalEntries % 100 === 0) {
+      this.cleanup();
+    }
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    const keysToDelete: string[] = [];
+
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        keysToDelete.push(key);
+      }
+    }
+
+    keysToDelete.forEach(key => {
+      this.cache.delete(key);
+      this.metrics.evictions++;
+      this.metrics.totalEntries--;
+    });
+
+    if (keysToDelete.length > 0) {
+      logger.resource(`Cache cleanup: removed ${keysToDelete.length} expired entries`);
+    }
+  }
+
+  getMetrics(): CacheMetrics {
+    const totalRequests = this.metrics.hits + this.metrics.misses;
+    return {
+      ...this.metrics,
+      hitRate: totalRequests > 0 ? this.metrics.hits / totalRequests : 0,
+    };
+  }
+
+  clear(): void {
+    this.cache.clear();
+    this.metrics.totalEntries = 0;
+    this.metrics.hits = 0;
+    this.metrics.misses = 0;
+    this.metrics.evictions = 0;
+    logger.resource('Response cache cleared');
+  }
+
+  // Get cache statistics for monitoring
+  getStats() {
+    const entries = Array.from(this.cache.values());
+    const now = Date.now();
+
+    return {
+      totalEntries: this.metrics.totalEntries,
+      averageAge: entries.length > 0
+        ? entries.reduce((sum, entry) => sum + (now - entry.timestamp), 0) / entries.length
+        : 0,
+      averageHits: entries.length > 0
+        ? entries.reduce((sum, entry) => sum + entry.hits, 0) / entries.length
+        : 0,
+      oldestEntry: entries.length > 0
+        ? Math.min(...entries.map(entry => now - entry.timestamp))
+        : 0,
+      newestEntry: entries.length > 0
+        ? Math.max(...entries.map(entry => now - entry.timestamp))
+        : 0,
+    };
+  }
+}
+
 // Utility function for retry with exponential backoff
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
@@ -77,12 +333,23 @@ interface PooledInstance {
   sessionCount: number;
 }
 
+interface QueuedRequest {
+  tech: string;
+  configObject: OpenCodeConfig;
+  resolve: (value: { client: OpencodeClient; server: { close: () => void; url: string } }) => void;
+  reject: (error: Error) => void;
+  timeoutId: NodeJS.Timeout;
+}
+
 export class ResourcePool {
   private pool = new Map<string, PooledInstance[]>();
   private maxInstancesPerTech: number;
   private maxTotalInstances: number;
   private instanceTimeoutMs: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private requestQueue: QueuedRequest[] = [];
+  private maxQueueSize: number = 50; // Maximum queued requests
+  private queueTimeoutMs: number = 30000; // 30 second queue timeout
 
   constructor(
     maxInstancesPerTech: number = 3,
@@ -148,26 +415,48 @@ export class ResourcePool {
 
     // Check if we can create a new instance for this tech
     const techInstances = this.pool.get(tech) || [];
-    if (techInstances.length >= this.maxInstancesPerTech) {
-      throw new OcError(`RESOURCE EXHAUSTION: Maximum instances (${this.maxInstancesPerTech}) reached for technology ${tech}`, null);
+    const canCreateNewInstance = techInstances.length < this.maxInstancesPerTech && this.getTotalInstances() < this.maxTotalInstances;
+
+    if (canCreateNewInstance) {
+      // Create new instance
+      const result = await this.createNewInstance(tech, configObject);
+
+      // Add to pool
+      if (!this.pool.has(tech)) {
+        this.pool.set(tech, []);
+      }
+      this.pool.get(tech)!.push(result);
+
+      await logger.resource(`Created new pooled instance for ${tech}. Total instances: ${this.getTotalInstances()}`);
+      return { client: result.client, server: result.server };
     }
 
-    // Check total instance limit
-    if (this.getTotalInstances() >= this.maxTotalInstances) {
-      throw new OcError(`RESOURCE EXHAUSTION: Maximum total instances (${this.maxTotalInstances}) reached across all technologies`, null);
+    // Instance limits reached, add to queue
+    if (this.requestQueue.length >= this.maxQueueSize) {
+      throw new OcError(`RESOURCE EXHAUSTION: Request queue full (${this.maxQueueSize}). Maximum instances (${this.maxInstancesPerTech}) reached for technology ${tech} and total instances (${this.maxTotalInstances}) reached across all technologies`, null);
     }
 
-    // Create new instance
-    const result = await this.createNewInstance(tech, configObject);
+    // Queue the request and wait for an instance to become available
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        // Remove from queue on timeout
+        const index = this.requestQueue.findIndex(req => req.timeoutId === timeoutId);
+        if (index !== -1) {
+          this.requestQueue.splice(index, 1);
+        }
+        reject(new OcError(`RESOURCE EXHAUSTION: Request timed out after ${this.queueTimeoutMs}ms waiting for instance of ${tech}`, null));
+      }, this.queueTimeoutMs);
 
-    // Add to pool
-    if (!this.pool.has(tech)) {
-      this.pool.set(tech, []);
-    }
-    this.pool.get(tech)!.push(result);
+      this.requestQueue.push({
+        tech,
+        configObject,
+        resolve,
+        reject,
+        timeoutId,
+      });
 
-    await logger.resource(`Created new pooled instance for ${tech}. Total instances: ${this.getTotalInstances()}`);
-    return { client: result.client, server: result.server };
+      logger.resource(`Request queued for ${tech}. Queue size: ${this.requestQueue.length}`);
+    });
   }
 
   private async createNewInstance(tech: string, configObject: OpenCodeConfig): Promise<PooledInstance> {
@@ -216,6 +505,28 @@ export class ResourcePool {
       instance.inUse = false;
       instance.lastUsed = new Date();
       instance.sessionCount = Math.max(0, instance.sessionCount - 1);
+
+      // Process queued requests for this tech
+      this.processQueuedRequests(tech);
+    }
+  }
+
+  private async processQueuedRequests(tech: string): void {
+    // Find the first queued request for this tech
+    const queuedIndex = this.requestQueue.findIndex(req => req.tech === tech);
+
+    if (queuedIndex !== -1) {
+      const queuedRequest = this.requestQueue.splice(queuedIndex, 1)[0];
+      clearTimeout(queuedRequest.timeoutId);
+
+      try {
+        // Try to acquire instance for the queued request
+        const result = await this.acquireInstance(queuedRequest.tech, queuedRequest.configObject);
+        queuedRequest.resolve(result);
+        logger.resource(`Processed queued request for ${tech}. Remaining queue size: ${this.requestQueue.length}`);
+      } catch (error) {
+        queuedRequest.reject(error instanceof Error ? error : new Error(String(error)));
+      }
     }
   }
 
@@ -224,7 +535,9 @@ export class ResourcePool {
       totalInstances: this.getTotalInstances(),
       instancesByTech: {} as Record<string, number>,
       activeInstances: 0,
-      availableInstances: 0
+      availableInstances: 0,
+      queuedRequests: this.requestQueue.length,
+      queueSize: this.maxQueueSize,
     };
 
     for (const [tech, instances] of this.pool.entries()) {
@@ -246,6 +559,13 @@ export class ResourcePool {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+
+    // Reject all queued requests
+    for (const queuedRequest of this.requestQueue) {
+      clearTimeout(queuedRequest.timeoutId);
+      queuedRequest.reject(new Error('Resource pool shutting down'));
+    }
+    this.requestQueue.length = 0;
 
     // Close all instances
     for (const [tech, instances] of this.pool.entries()) {
@@ -443,6 +763,8 @@ export class OcService {
   private sessionCoordinator: SessionCoordinator;
   private eventProcessor: EventProcessor;
   private eventStreamManager: EventStreamManager;
+  private responseCache: ResponseCache;
+  private sessionPool: SessionPool;
   private metrics = {
     sessionsCreated: 0,
     sessionsCleanedUp: 0,
@@ -452,6 +774,12 @@ export class OcService {
 
   constructor(configService: ConfigService) {
     this.configService = configService;
+
+    // Initialize response cache with 10-minute TTL
+    this.responseCache = new ResponseCache(10 * 60 * 1000);
+
+    // Initialize session pool for reusing sessions across same-tech queries
+    this.sessionPool = new SessionPool(15 * 60 * 1000); // 15 minute session reuse timeout
 
     // Initialize resource pool with configurable limits
     const maxInstancesPerTech = this.configService.getMaxInstancesPerTech();
@@ -467,13 +795,10 @@ export class OcService {
       maxTotalSessions
     );
 
-    // Initialize event processing system
+    // Initialize event processing system with optimized performance settings
     this.eventProcessor = new EventProcessor({
-      bufferSize: 1000,
-      maxConcurrentHandlers: 5,
-      processingRateLimit: 100,
-      enableBackpressure: true,
-      backpressureThreshold: 500,
+      maxConcurrentHandlers: 20, // Increased from 5 to allow more parallel processing
+      processingRateLimit: 1000, // Increased from 100 to reduce artificial throttling
     });
 
     this.eventStreamManager = new EventStreamManager();
@@ -727,7 +1052,11 @@ export class OcService {
       ...this.metrics,
       currentSessionCount: this.sessionCoordinator.getCoordinatorMetrics().totalSessions,
       resourcePool: this.resourcePool.getPoolMetrics(),
-      sessionCoordinator: this.sessionCoordinator.getCoordinatorMetrics()
+      sessionCoordinator: this.sessionCoordinator.getCoordinatorMetrics(),
+      responseCache: this.responseCache.getMetrics(),
+      cacheStats: this.responseCache.getStats(),
+      repositoryCache: this.configService.getRepositoryCacheStats(),
+      sessionPool: this.sessionPool.getStats()
     };
   }
 
@@ -752,6 +1081,21 @@ export class OcService {
 
     await logger.info(`Asking question about ${tech}: "${question}"`);
 
+    // Check cache for similar recent questions to avoid redundant processing
+    const cacheKey = question.toLowerCase().trim();
+    const cachedResponse = await this.responseCache.get<Event[]>(cacheKey, tech);
+    if (cachedResponse) {
+      await logger.resource(`Cache hit for question about ${tech}: "${question.substring(0, 50)}..."`);
+      // Return cached events as an async iterable
+      return {
+        async *[Symbol.asyncIterator]() {
+          for (const event of cachedResponse) {
+            yield event;
+          }
+        }
+      };
+    }
+
     // Validate tech name first and provide suggestions if not found
     // This prevents attempting to clone a non-existent repo
     const allRepos = this.configService.getRepos();
@@ -772,17 +1116,40 @@ export class OcService {
       try {
         result = await this.getOpencodeInstance(tech);
 
-        const session = await result.client.session.create();
+        // Try to reuse an existing session from the pool first
+        let pooledSession = this.sessionPool.getAvailableSession(tech);
+        let sessionCreated = false;
 
-        if (session.error) {
-          this.resourcePool.releaseInstance(tech, result.client); // Release back to pool
-          await logger.resource(`Session creation failed for ${tech}, instance released to pool`);
-          await logger.error(`Failed to start OpenCode session for ${tech}: ${session.error}`);
-          throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
+        if (pooledSession) {
+          sessionID = pooledSession.sessionId;
+          await logger.resource(`Reusing pooled session ${sessionID} for ${tech}`);
+        } else {
+          // Create new session if none available in pool
+          const session = await result.client.session.create();
+
+          if (session.error) {
+            this.resourcePool.releaseInstance(tech, result.client); // Release back to pool
+            await logger.resource(`Session creation failed for ${tech}, instance released to pool`);
+            await logger.error(`Failed to start OpenCode session for ${tech}: ${session.error}`);
+            throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
+          }
+
+          sessionID = session.data.id;
+          sessionCreated = true;
+          await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
+
+          // Add new session to pool for future reuse
+          const now = new Date();
+          this.sessionPool.addSession({
+            sessionId: sessionID,
+            tech,
+            client: result.client,
+            server: result.server,
+            createdAt: now,
+            lastUsed: now,
+            isActive: true,
+          });
         }
-
-        sessionID = session.data.id;
-        await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
 
         // Get the raw event stream from the client
         const events = await result.client.event.subscribe();
@@ -803,9 +1170,10 @@ export class OcService {
                 if (isSessionIdleEvent(event) && event.properties.sessionID === sessionID) {
                   sessionCompleted = true;
                   await logger.info(`Session ${sessionID} completed for ${tech}`);
-                  // Release instance back to pool after session completes
+                  // Mark session as inactive in pool and release instance back to pool
+                  self.sessionPool.markSessionInactive(sessionID);
                   self.resourcePool.releaseInstance(tech, result!.client);
-                  await logger.resource(`Instance for ${tech} released back to pool after session completion`);
+                  await logger.resource(`Session ${sessionID} marked inactive and instance released back to pool`);
                 }
 
                 yield event;
@@ -848,13 +1216,22 @@ export class OcService {
         });
 
         // Return the processed events through our event processing system
+        // Collect events for caching while yielding them
+        const allEvents: Event[] = [];
         const processedEvents = {
           async *[Symbol.asyncIterator]() {
             // The EventProcessor handles the actual event processing and output
             // This iterator just yields events that pass through the system
             // The real processing happens in the handlers registered with the processor
             for await (const event of sessionFilteredEvents) {
+              allEvents.push(event);
               yield event;
+            }
+
+            // Cache the collected events after streaming is complete
+            if (allEvents.length > 0) {
+              await self.responseCache.set(cacheKey, tech, allEvents, 10 * 60 * 1000); // 10 minute TTL
+              await logger.resource(`Cached ${allEvents.length} events for question about ${tech}`);
             }
           }
         };

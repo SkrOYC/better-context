@@ -79,3 +79,46 @@ The validation system provides clear error messages for configuration issues:
 - **ConfigurationChangeError**: Occurs when attempting to apply invalid configuration changes. The configuration is reverted to the previous valid state.
 
 If you encounter persistent errors, check your network connection, provider credentials, or configuration. For validation errors, ensure your provider and model settings are correct and that your provider credentials are properly configured.
+
+## Performance Optimizations
+
+`btca` includes several performance optimizations to improve response times and resource utilization:
+
+### Response Caching
+- **Query Result Caching**: Frequently asked questions are cached for 10 minutes, eliminating redundant API calls
+- **Cache Metrics**: Hit rates and performance statistics are tracked and available via metrics
+- **Automatic Cleanup**: Expired cache entries are automatically removed to prevent memory leaks
+
+### Repository Caching
+- **Smart Update Detection**: Repository clone/pull operations are cached for 30 minutes
+- **Reduced I/O**: Avoids unnecessary git operations when repositories are recently updated
+- **Background Updates**: Repository updates happen only when needed, not on every question
+
+### Session Reuse
+- **Session Pooling**: Active sessions are reused for the same technology within 15-minute windows
+- **Resource Efficiency**: Reduces session creation overhead and improves response times
+- **Automatic Cleanup**: Inactive sessions are automatically cleaned up to free resources
+
+### Parallel Processing
+- **Concurrent Event Handling**: Increased from 5 to 20 concurrent event handlers
+- **Optimized Rate Limiting**: Increased processing rate from 100 to 1000 events/second
+- **Better Throughput**: Improved handling of high-volume event streams
+
+### Resource Pool Queuing
+- **Async Queuing**: When resource limits are reached, requests queue instead of failing immediately
+- **Graceful Degradation**: 30-second timeout with proper cleanup for queued requests
+- **Improved Reliability**: Better handling of concurrent load spikes
+
+### Performance Monitoring
+`btca` provides comprehensive performance metrics accessible via the service metrics:
+
+```bash
+# Performance metrics include:
+# - Cache hit rates and response times
+# - Session pool utilization
+# - Repository cache statistics
+# - Resource pool status and queuing
+# - Event processing throughput
+```
+
+These optimizations work together to provide faster response times, better resource utilization, and improved reliability under load.

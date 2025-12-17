@@ -35,6 +35,83 @@ type Config = {
   maxTotalSessions: number;
 };
 
+// Repository caching interfaces
+export interface RepoCacheEntry {
+  lastUpdated: number;
+  lastChecked: number;
+  ttl: number; // Time to live in milliseconds
+}
+
+export class RepositoryCache {
+  private cache = new Map<string, RepoCacheEntry>();
+  private defaultTtlMs: number = 15 * 60 * 1000; // 15 minutes default
+
+  constructor(defaultTtlMs?: number) {
+    if (defaultTtlMs) {
+      this.defaultTtlMs = defaultTtlMs;
+    }
+  }
+
+  shouldUpdate(repoName: string): boolean {
+    const entry = this.cache.get(repoName);
+    if (!entry) {
+      return true; // Never cached, need to update
+    }
+
+    const now = Date.now();
+    const timeSinceLastCheck = now - entry.lastChecked;
+
+    // Check if cache entry has expired (should re-check remote)
+    // This covers both recent checks with expired content and stale entries
+    return timeSinceLastCheck > entry.ttl;
+  }
+
+  markChecked(repoName: string): void {
+    const now = Date.now();
+    const entry = this.cache.get(repoName) || {
+      lastUpdated: 0,
+      lastChecked: now,
+      ttl: this.defaultTtlMs,
+    };
+
+    entry.lastChecked = now;
+    this.cache.set(repoName, entry);
+  }
+
+  markUpdated(repoName: string): void {
+    const now = Date.now();
+    const entry = this.cache.get(repoName) || {
+      lastUpdated: now,
+      lastChecked: now,
+      ttl: this.defaultTtlMs,
+    };
+
+    entry.lastUpdated = now;
+    entry.lastChecked = now;
+    this.cache.set(repoName, entry);
+  }
+
+  getStats() {
+    const entries = Array.from(this.cache.values());
+    const now = Date.now();
+
+    return {
+      totalRepos: this.cache.size,
+      averageTimeSinceUpdate: entries.length > 0
+        ? entries.reduce((sum, entry) => sum + (now - entry.lastUpdated), 0) / entries.length
+        : 0,
+      averageTimeSinceCheck: entries.length > 0
+        ? entries.reduce((sum, entry) => sum + (now - entry.lastChecked), 0) / entries.length
+        : 0,
+      reposNeedingUpdate: entries.filter(entry => (now - entry.lastChecked) > entry.ttl).length,
+    };
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
 const DEFAULT_CONFIG: Config = {
   reposDirectory: '~/.local/share/btca/repos',
   repos: [
@@ -256,9 +333,12 @@ export class ConfigService {
   private config!: Config;
   private configPath!: string;
   private validationService: ValidationService;
+  private repositoryCache: RepositoryCache;
 
   constructor(validationService?: ValidationService) {
     this.validationService = validationService || new ValidationService(this);
+    // Initialize repository cache with 30-minute TTL to balance freshness with performance
+    this.repositoryCache = new RepositoryCache(30 * 60 * 1000);
   }
 
   async init(): Promise<void> {
@@ -281,16 +361,32 @@ export class ConfigService {
     const branch = repo.branch ?? 'main';
     const suppressLogs = options.suppressLogs;
 
+    // Check if repository needs updating based on cache
+    if (!this.repositoryCache.shouldUpdate(repoName)) {
+      if (!suppressLogs) {
+        console.log(`Using cached repository for ${repo.name} (recently updated)`);
+      }
+      await logger.resource(`Repository cache hit for ${repo.name} - skipping update`);
+      return repo;
+    }
+
+    // Mark as checked to prevent redundant checks
+    this.repositoryCache.markChecked(repoName);
+
     try {
       const exists = await directoryExists(repoDir);
       if (exists) {
         if (!suppressLogs) console.log(`Pulling latest changes for ${repo.name}...`);
         await logger.info(`Pulling latest changes for ${repo.name} from ${repo.url} (branch: ${branch})`);
         await pullRepo({ repoDir, branch });
+        // Mark as updated after successful pull
+        this.repositoryCache.markUpdated(repoName);
       } else {
         if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
         await logger.info(`Cloning ${repo.name} from ${repo.url} (branch: ${branch})`);
         await cloneRepo({ repoDir, url: repo.url, branch });
+        // Mark as updated after successful clone
+        this.repositoryCache.markUpdated(repoName);
       }
       if (!suppressLogs) console.log(`Done with ${repo.name}`);
       await logger.info(`${repo.name} operation completed successfully`);
@@ -398,5 +494,9 @@ export class ConfigService {
 
   getValidationService(): ValidationService {
     return this.validationService;
+  }
+
+  getRepositoryCacheStats() {
+    return this.repositoryCache.getStats();
   }
 }
