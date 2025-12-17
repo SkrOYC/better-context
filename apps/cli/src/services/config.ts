@@ -61,14 +61,9 @@ export class RepositoryCache {
     const now = Date.now();
     const timeSinceLastCheck = now - entry.lastChecked;
 
-    // Check if cache entry is expired (should re-check remote)
-    if (timeSinceLastCheck > entry.ttl) {
-      return true;
-    }
-
-    // If we checked recently but content is old, still update
-    const timeSinceLastUpdate = now - entry.lastUpdated;
-    return timeSinceLastUpdate > entry.ttl;
+    // Check if cache entry has expired (should re-check remote)
+    // This covers both recent checks with expired content and stale entries
+    return timeSinceLastCheck > entry.ttl;
   }
 
   markChecked(repoName: string): void {

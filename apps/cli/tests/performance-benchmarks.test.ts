@@ -183,9 +183,8 @@ describe('Event Processing Performance Benchmarks', () => {
         Pooled processors: ${metrics.pooledProcessors}`);
 
       expect(metrics.totalStreams).toBe(streamCount);
-      // Note: EventStreamManager doesn't actually process events through handlers,
-      // so eventCount remains 0. This tests stream management, not event processing.
-      expect(metrics.totalEventsProcessed).toBe(0);
+      // EventStreamManager now properly counts events as they're processed
+      expect(metrics.totalEventsProcessed).toBe(streamCount * eventsPerStream);
     });
 
     it('should efficiently clean up stale streams', async () => {

@@ -47,6 +47,7 @@ export interface PooledSession {
 
 export class SessionPool {
   private sessions = new Map<string, PooledSession[]>(); // tech -> sessions
+  private sessionIdToTech = new Map<string, string>(); // sessionId -> tech (secondary index)
   private sessionTimeoutMs: number = 10 * 60 * 1000; // 10 minutes default
 
   constructor(sessionTimeoutMs?: number) {
@@ -61,6 +62,7 @@ export class SessionPool {
       this.sessions.set(tech, []);
     }
     this.sessions.get(tech)!.push(session);
+    this.sessionIdToTech.set(session.sessionId, tech); // Maintain index
   }
 
   getAvailableSession(tech: string): PooledSession | null {
@@ -79,12 +81,13 @@ export class SessionPool {
   }
 
   markSessionInactive(sessionId: string): void {
-    for (const techSessions of this.sessions.values()) {
-      const session = techSessions.find(s => s.sessionId === sessionId);
-      if (session) {
-        session.isActive = false;
-        break;
-      }
+    const tech = this.sessionIdToTech.get(sessionId);
+    if (!tech) return;
+
+    const techSessions = this.sessions.get(tech) || [];
+    const session = techSessions.find(s => s.sessionId === sessionId);
+    if (session) {
+      session.isActive = false;
     }
   }
 
@@ -104,6 +107,10 @@ export class SessionPool {
         this.sessions.set(tech, activeSessions);
       } else {
         this.sessions.delete(tech);
+        // Remove from index when tech is deleted
+        for (const session of techSessions) {
+          this.sessionIdToTech.delete(session.sessionId);
+        }
       }
     }
 
@@ -131,6 +138,7 @@ export class SessionPool {
 
   clear(): void {
     this.sessions.clear();
+    this.sessionIdToTech.clear();
   }
 }
 
@@ -789,11 +797,8 @@ export class OcService {
 
     // Initialize event processing system with optimized performance settings
     this.eventProcessor = new EventProcessor({
-      bufferSize: 1000,
       maxConcurrentHandlers: 20, // Increased from 5 to allow more parallel processing
       processingRateLimit: 1000, // Increased from 100 to reduce artificial throttling
-      enableBackpressure: true,
-      backpressureThreshold: 500,
     });
 
     this.eventStreamManager = new EventStreamManager();
