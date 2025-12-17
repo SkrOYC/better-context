@@ -59,13 +59,27 @@ export class InvalidTechError extends Error {
     readonly suggestedTechs: string[] = []
   ) {
     let message = `Technology "${techName}" not found.`;
-    
+
     if (suggestedTechs.length > 0) {
       message += ` Did you mean: ${suggestedTechs.join(', ')}?`;
     } else {
       message += ` Available technologies: ${availableTechs.join(', ')}.`;
     }
-    
+
+    super(message);
+  }
+}
+
+export class RetryableError extends Error {
+  readonly _tag = "RetryableError";
+  constructor(override readonly message: string, override readonly cause?: unknown) {
+    super(message);
+  }
+}
+
+export class NonRetryableError extends Error {
+  readonly _tag = "NonRetryableError";
+  constructor(override readonly message: string, override readonly cause?: unknown) {
     super(message);
   }
 }

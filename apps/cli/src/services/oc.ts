@@ -5,12 +5,62 @@ import {
   type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
-import { OcError, InvalidTechError } from '../lib/errors.ts';
+import { OcError, InvalidTechError, RetryableError, NonRetryableError } from '../lib/errors.ts';
 import { validateProviderAndModel } from '../lib/utils/validation.ts';
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
 import { logger } from '../lib/utils/logger.ts';
 
 export type { Event as OcEvent };
+
+// Utility function for retry with exponential backoff
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  isRetryable: (error: Error) => boolean,
+  maxRetries: number,
+  baseDelay: number,
+  maxDelay: number
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt < maxRetries && error instanceof Error && isRetryable(error)) {
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Unreachable code');
+}
+
+// Helper to determine if an error is retryable
+export function isRetryableError(error: Error): boolean {
+  // Non-retryable errors
+  if (error instanceof InvalidTechError ||
+      error instanceof NonRetryableError) {
+    return false;
+  }
+
+  // Retryable: port exhaustion, network issues, timeouts, session creation failures
+  if (error instanceof OcError) {
+    const message = error.message.toLowerCase();
+    if (
+      message.includes('port') ||
+      message.includes('timeout') ||
+      message.includes('network') ||
+      message.includes('connection') ||
+      message.includes('failed to create') ||
+      message.includes('session')
+    ) {
+      return true;
+    }
+  }
+
+  // Default to retryable for unknown errors
+  return true;
+}
 
 export class OcService {
   private configService: ConfigService;
@@ -78,7 +128,7 @@ export class OcService {
 
   private async getOpencodeInstance(tech: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
     let portOffset = 0;
-    const maxInstances = 5;
+    const maxInstances = 10;
     const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
 
     if (!configObject) {
@@ -278,93 +328,100 @@ export class OcService {
     let result: { client: OpencodeClient; server: { close: () => void; url: string } } | null = null;
     let sessionID: string | null = null;
 
-    try {
-      await logger.info(`Asking question about ${tech}: "${question}"`);
+    await logger.info(`Asking question about ${tech}: "${question}"`);
 
-      // Validate tech name first and provide suggestions if not found
-      // This prevents attempting to clone a non-existent repo
-      const allRepos = this.configService.getRepos();
-      const availableTechs = allRepos.map(repo => repo.name);
-      if (!availableTechs.includes(tech)) {
-        const suggestedTechs = findSimilarStrings(tech, availableTechs, 3); // Increase threshold to allow more suggestions
-        throw new InvalidTechError(tech, availableTechs, suggestedTechs);
-      }
+    // Validate tech name first and provide suggestions if not found
+    // This prevents attempting to clone a non-existent repo
+    const allRepos = this.configService.getRepos();
+    const availableTechs = allRepos.map(repo => repo.name);
+    if (!availableTechs.includes(tech)) {
+      const suggestedTechs = findSimilarStrings(tech, availableTechs, 3); // Increase threshold to allow more suggestions
+      throw new InvalidTechError(tech, availableTechs, suggestedTechs);
+    }
 
-      await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: true });
+    await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: true });
 
-      result = await this.getOpencodeInstance(tech);
+    // Wrap the retryable operations
+    const maxRetries = this.configService.getMaxRetries();
+    const baseDelay = this.configService.getBaseBackoffMs();
+    const maxDelay = this.configService.getMaxBackoffMs();
 
-      const session = await result.client.session.create();
+    return await retryWithBackoff(async () => {
+      try {
+        result = await this.getOpencodeInstance(tech);
 
-      if (session.error) {
-        result.server.close(); // Cleanup immediately
-        await logger.resource(`Session creation failed for ${tech}, server cleaned up`);
-        await logger.error(`Failed to start OpenCode session for ${tech}: ${session.error}`);
-        throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
-      }
+        const session = await result.client.session.create();
 
-      sessionID = session.data.id;
-      await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
+        if (session.error) {
+          result.server.close(); // Cleanup immediately
+          await logger.resource(`Session creation failed for ${tech}, server cleaned up`);
+          await logger.error(`Failed to start OpenCode session for ${tech}: ${session.error}`);
+          throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
+        }
 
-      const events = await result.client.event.subscribe();
-      let promptError: Error | null = null;
+        sessionID = session.data.id;
+        await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
 
-      const filteredEvents = {
-        async *[Symbol.asyncIterator]() {
-          if (promptError) {
-            throw promptError;
-          }
-          for await (const event of events.stream) {
+        const events = await result.client.event.subscribe();
+        let promptError: Error | null = null;
+
+        const filteredEvents = {
+          async *[Symbol.asyncIterator]() {
             if (promptError) {
               throw promptError;
             }
-            if (event.type === 'session.idle' && event.properties.sessionID === sessionID) {
-              await logger.info(`Session ${sessionID} completed for ${tech}`);
-              break;
-            }
-            const props = event.properties;
-            if (!('sessionID' in props) || props.sessionID === sessionID) {
-              if (event.type === 'session.error') {
-                const props = event.properties as { error?: { name?: string } };
-                await logger.error(`Session error for ${tech} (session ${sessionID}): ${props.error?.name ?? 'Unknown session error'}`);
-                throw new OcError(props.error?.name ?? 'Unknown session error', props.error);
+            for await (const event of events.stream) {
+              if (promptError) {
+                throw promptError;
               }
-              yield event;
+              if (event.type === 'session.idle' && event.properties.sessionID === sessionID) {
+                await logger.info(`Session ${sessionID} completed for ${tech}`);
+                break;
+              }
+              const props = event.properties;
+              if (!('sessionID' in props) || props.sessionID === sessionID) {
+                if (event.type === 'session.error') {
+                  const props = event.properties as { error?: { name?: string } };
+                  await logger.error(`Session error for ${tech} (session ${sessionID}): ${props.error?.name ?? 'Unknown session error'}`);
+                  throw new OcError(props.error?.name ?? 'Unknown session error', props.error);
+                }
+                yield event;
+              }
             }
           }
-        }
-      };
+        };
 
-      // Fire the prompt
-      result.client.session.prompt({
-        path: { id: sessionID },
-        body: {
-          agent: 'docs',
-          model: {
-            providerID: this.configService.rawConfig().provider,
-            modelID: this.configService.rawConfig().model
-          },
-          parts: [{ type: 'text', text: question }]
-        }
-      }).catch(async (err) => {
-        promptError = new OcError(String(err), err);
-        await logger.error(`Prompt error for ${tech}: ${err}`);
-      });
+        // Fire the prompt
+        result.client.session.prompt({
+          path: { id: sessionID },
+          body: {
+            agent: 'docs',
+            model: {
+              providerID: this.configService.rawConfig().provider,
+              modelID: this.configService.rawConfig().model
+            },
+            parts: [{ type: 'text', text: question }]
+          }
+        }).catch(async (err) => {
+          promptError = new OcError(String(err), err);
+          await logger.error(`Prompt error for ${tech}: ${err}`);
+        });
 
-      return filteredEvents;
-    } catch (error) {
-      // Ensure cleanup even if error occurs after creation
-      if (result?.server) {
-        try {
-          result.server.close();
-          await logger.resource(`Server closed due to error in askQuestion for ${tech}`);
-        } catch (closeError) {
-          await logger.error(`Error closing server during cleanup: ${closeError}`);
+        return filteredEvents;
+      } catch (error) {
+        // Ensure cleanup even if error occurs after creation
+        if (result?.server) {
+          try {
+            result.server.close();
+            await logger.resource(`Server closed due to error in askQuestion for ${tech}`);
+          } catch (closeError) {
+            await logger.error(`Error closing server during cleanup: ${closeError}`);
+          }
         }
+
+        await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
+        throw error;
       }
-
-      await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
-    }
+    }, isRetryableError, maxRetries, baseDelay, maxDelay);
   }
 }
