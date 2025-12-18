@@ -6,6 +6,7 @@ import {
   type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
+import { ServerManager } from '../lib/utils/ServerManager.ts';
 import path from 'node:path';
 import { OcError, InvalidTechError } from '../lib/errors.ts';
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
@@ -49,11 +50,13 @@ export type { Event as OcEvent };
 export class OcService {
   private configService: ConfigService;
   private eventProcessor: EventProcessor;
+  private serverManager: ServerManager;
 
 
 
-  constructor(configService: ConfigService) {
+  constructor(configService: ConfigService, serverManager: ServerManager) {
     this.configService = configService;
+    this.serverManager = serverManager;
 
     // Initialize event processing system
     this.eventProcessor = new EventProcessor();
@@ -97,6 +100,11 @@ export class OcService {
   }
 
   private async getOpencodeInstance(tech: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
+    const serverKey = `${tech}-${Date.now()}`;
+    return await this.getOpencodeInstanceWithKey(tech, serverKey);
+  }
+  
+  private async getOpencodeInstanceWithKey(tech: string, serverKey: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
     const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
 
     if (!configObject) {
@@ -108,9 +116,11 @@ export class OcService {
       throw new InvalidTechError(tech, availableTechs, suggestedTechs);
     }
 
-    // Create OpenCode instance directly
+    // Create OpenCode instance through ServerManager
     let port = this.configService.getOpenCodeBasePort();
     const maxPort = port + this.configService.getOpenCodePortRange() - 1;
+    let lastError: any = null;
+    
     while (true) {
       try {
         const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
@@ -118,7 +128,9 @@ export class OcService {
 
         try {
           await logger.info(`Creating OpenCode instance for ${tech} on port ${port}`);
-          const result = await createOpencode({
+          
+          // Use ServerManager to create the server with the specific key
+          const result = await this.serverManager.createServer(serverKey, {
             port
           });
 
@@ -140,9 +152,10 @@ export class OcService {
           }
         }
       } catch (err) {
+        lastError = err;
         port++;
         if (port > maxPort) {
-          throw new OcError('RESOURCE EXHAUSTION: No available ports for new instance', err);
+          throw new OcError('RESOURCE EXHAUSTION: No available ports for new instance', lastError);
         }
       }
     }
@@ -152,6 +165,7 @@ export class OcService {
     const { question, tech } = args;
     let result!: { client: OpencodeClient; server: { close: () => void; url: string } };
     let sessionID: string | null = null;
+    let serverKey: string | null = null;
 
     await logger.info(`Asking question about ${tech}: "${question}"`);
 
@@ -171,7 +185,10 @@ export class OcService {
 
     return await (async () => {
       try {
-        result = await this.getOpencodeInstance(tech);
+        // Generate a server key that we can use to close it later
+        serverKey = `${tech}-${Date.now()}`;
+        // Override the getOpencodeInstance to use the specific server key
+        result = await this.getOpencodeInstanceWithKey(tech, serverKey);
 
         // Check if the provider is authenticated
         const providerList = await result.client.provider.list();
@@ -351,6 +368,14 @@ export class OcService {
       } catch (error) {
         await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
+      } finally {
+        // Always close the server after the session completes (success or error)
+        if (serverKey) {
+          await logger.info(`Closing server for ${serverKey} after session completion`);
+          await this.serverManager.closeServer(serverKey).catch(async (err) => {
+            await logger.error(`Error closing server ${serverKey}: ${err instanceof Error ? err.message : String(err)}`);
+          });
+        }
       }
     })();
   }
