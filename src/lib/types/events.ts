@@ -93,10 +93,7 @@ export interface ServerConnectedProperties extends BaseEventProperties {
   // Server connected events typically have minimal properties
 }
 
-// Permission request event properties
-export interface PermissionRequestProperties extends BaseEventProperties {
-  permissionID: string;
-}
+
 
 // Tool event properties (matches SDK ToolPart)
 export interface ToolPart {
@@ -147,10 +144,7 @@ export type ServerConnectedEvent = Event & {
   properties: ServerConnectedProperties;
 };
 
-export type PermissionRequestEvent = Event & {
-  type: 'permission.updated';
-  properties: PermissionRequestProperties;
-};
+
 
 export type ToolPartUpdatedEvent = Event & {
   type: 'message.part.updated';
@@ -160,7 +154,7 @@ export type ToolPartUpdatedEvent = Event & {
 };
 
 // Union type for all handled SDK events
-export type SdkEvent = MessagePartUpdatedEvent | MessageUpdatedEvent | SessionErrorEvent | SessionIdleEvent | SessionStatusEvent | ToolPartUpdatedEvent | ServerConnectedEvent | PermissionRequestEvent;
+export type SdkEvent = MessagePartUpdatedEvent | MessageUpdatedEvent | SessionErrorEvent | SessionIdleEvent | SessionStatusEvent | ToolPartUpdatedEvent | ServerConnectedEvent;
 
 // Type guard helper for events with session IDs
 export type EventWithSessionId = Event & {

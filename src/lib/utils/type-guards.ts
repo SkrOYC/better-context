@@ -14,8 +14,7 @@ import type {
   SessionErrorProperties,
   SessionIdleProperties,
   SessionStatusProperties,
-  ServerConnectedProperties,
-  PermissionRequestEvent
+  ServerConnectedProperties
 } from '../types/events.ts';
 
 /**
@@ -135,10 +134,7 @@ export function isSdkError(error: unknown): error is { name?: string; message?: 
           ('code' in error && typeof error.code === 'string'));
 }
 
-// Type guard for permission request events
-export function isPermissionRequestEvent(event: Event): event is PermissionRequestEvent {
-  return hasProperties(event) && event.type === 'permission.updated';
-}
+
 
 // Type guard for session response validation
 export function isValidSessionResponse(response: unknown): response is { data: { id: string } } {
