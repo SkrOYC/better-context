@@ -3,12 +3,14 @@ import type {
   MessagePartUpdatedEvent,
   SessionErrorEvent,
   SessionIdleEvent,
+  ServerConnectedEvent,
   ToolPartUpdatedEvent,
   ToolPart,
   EventWithSessionId,
   MessageEventProperties,
   SessionErrorProperties,
-  SessionIdleProperties
+  SessionIdleProperties,
+  ServerConnectedProperties
 } from '../types/events.ts';
 
 /**
@@ -52,6 +54,11 @@ export function isSessionErrorEvent(event: Event): event is SessionErrorEvent {
 // Type guard for session idle events
 export function isSessionIdleEvent(event: Event): event is SessionIdleEvent {
   return hasProperties(event) && event.type === 'session.idle';
+}
+
+// Type guard for server connected events
+export function isServerConnectedEvent(event: Event): event is ServerConnectedEvent {
+  return hasProperties(event) && event.type === 'server.connected';
 }
 
 // Type guard for tool events

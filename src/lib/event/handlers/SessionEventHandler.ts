@@ -1,8 +1,8 @@
 import type { Event } from '@opencode-ai/sdk';
 import type { EventHandler } from '../EventProcessor.ts';
 import type { Event as SdkEvent } from '@opencode-ai/sdk';
-import type { SessionErrorEvent, SessionIdleEvent, EventWithSessionId } from '../../types/events.ts';
-import { isSessionErrorEvent, isSessionIdleEvent, hasSessionId } from '../../utils/type-guards.ts';
+import type { SessionErrorEvent, SessionIdleEvent, ServerConnectedEvent, EventWithSessionId } from '../../types/events.ts';
+import { isSessionErrorEvent, isSessionIdleEvent, isServerConnectedEvent, hasSessionId } from '../../utils/type-guards.ts';
 import { logger } from '../../utils/logger.ts';
 import { OcError } from '../../errors.ts';
 
@@ -12,19 +12,25 @@ export interface SessionEventHandlerOptions {
   onSessionIdle?: (sessionId: string) => void;
 }
 
-export class SessionEventHandler implements EventHandler<SessionErrorEvent | SessionIdleEvent> {
+export class SessionEventHandler implements EventHandler<SessionErrorEvent | SessionIdleEvent | ServerConnectedEvent> {
   private options: SessionEventHandlerOptions;
 
   constructor(options: SessionEventHandlerOptions = {}) {
     this.options = options;
   }
 
-  canHandle(event: SdkEvent): event is SessionErrorEvent | SessionIdleEvent {
-    return isSessionErrorEvent(event) || isSessionIdleEvent(event);
+  canHandle(event: SdkEvent): event is SessionErrorEvent | SessionIdleEvent | ServerConnectedEvent {
+    return isSessionErrorEvent(event) || isSessionIdleEvent(event) || isServerConnectedEvent(event);
   }
 
-  async handle(event: SessionErrorEvent | SessionIdleEvent): Promise<void> {
+  async handle(event: SessionErrorEvent | SessionIdleEvent | ServerConnectedEvent): Promise<void> {
     try {
+      // Handle server connected event (no session ID)
+      if (isServerConnectedEvent(event)) {
+        await this.handleServerConnected(event);
+        return;
+      }
+
       // Type-safe session ID extraction
       if (!hasSessionId(event)) {
         logger.warn(`Session event missing sessionID: ${event.type}`);
@@ -91,6 +97,11 @@ export class SessionEventHandler implements EventHandler<SessionErrorEvent | Ses
         logger.error(`Error in session idle callback: ${callbackError}`);
       }
     }
+  }
+
+  private async handleServerConnected(event: ServerConnectedEvent): Promise<void> {
+    logger.info('Server connected event received');
+    // No specific action needed, just log
   }
 
   /**

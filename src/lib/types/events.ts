@@ -39,6 +39,11 @@ export interface SessionIdleProperties extends BaseEventProperties {
   // Session idle events typically have minimal properties
 }
 
+// Server connected event properties
+export interface ServerConnectedProperties extends BaseEventProperties {
+  // Server connected events typically have minimal properties
+}
+
 // Tool event properties (matches SDK ToolPart)
 export interface ToolPart {
   id: string;
@@ -73,6 +78,11 @@ export type SessionIdleEvent = Event & {
   properties: SessionIdleProperties;
 };
 
+export type ServerConnectedEvent = Event & {
+  type: 'server.connected';
+  properties: ServerConnectedProperties;
+};
+
 export type ToolPartUpdatedEvent = Event & {
   type: 'message.part.updated';
   properties: {
@@ -81,7 +91,7 @@ export type ToolPartUpdatedEvent = Event & {
 };
 
 // Union type for all handled SDK events
-export type SdkEvent = MessagePartUpdatedEvent | SessionErrorEvent | SessionIdleEvent | ToolPartUpdatedEvent;
+export type SdkEvent = MessagePartUpdatedEvent | SessionErrorEvent | SessionIdleEvent | ToolPartUpdatedEvent | ServerConnectedEvent;
 
 // Type guard helper for events with session IDs
 export type EventWithSessionId = Event & {

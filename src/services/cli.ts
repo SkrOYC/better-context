@@ -577,6 +577,12 @@ EXAMPLES:
   }
 
   private async handleAskCommand(question: string, tech: string): Promise<void> {
+    const timeoutId = setTimeout(() => {
+      console.error('\nCommand timed out after 10 minutes. The model may not be responding or the provider may not be configured correctly.');
+      console.error('Check your configuration with "btca config model" and "btca auth status".');
+      process.exit(1);
+    }, 10 * 60 * 1000);
+
     try {
       await logger.info(`CLI: Executing ask command for ${tech} with question: "${question}"`);
       const eventStream = await this.oc.askQuestion({ tech, question });
@@ -589,10 +595,13 @@ EXAMPLES:
         // No manual processing needed here anymore
       }
 
+      clearTimeout(timeoutId);
+
       // Add a final newline for clean output formatting
       console.log('\n');
       await logger.info(`CLI: Ask command completed for ${tech}`);
     } catch (e: any) {
+      clearTimeout(timeoutId);
       await logger.error(`CLI: Error in ask command for ${tech}: ${e instanceof Error ? e.message : String(e)}`);
       handleCommandError(e);
     }

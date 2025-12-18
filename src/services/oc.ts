@@ -169,6 +169,16 @@ export class OcService {
       try {
         result = await this.getOpencodeInstance(tech);
 
+        // Check if the provider is authenticated
+        const providerList = await result.client.provider.list();
+        if (providerList.error) {
+          throw new OcError('Failed to list providers', providerList.error);
+        }
+        const { connected } = providerList.data;
+        if (!connected.includes(this.configService.rawConfig().provider)) {
+          throw new OcError(`Provider "${this.configService.rawConfig().provider}" is not authenticated. Run "btca auth login --provider ${this.configService.rawConfig().provider}" to authenticate.`);
+        }
+
         // Create new session
         const repoPath = path.join(this.configService.getReposDirectory(), tech);
         await logger.info(`Creating session for ${tech} with working directory: ${repoPath}`);
@@ -198,9 +208,8 @@ export class OcService {
             let eventCount = 0;
             for await (const event of events.stream) {
               eventCount++;
-              if (eventCount === 1 || eventCount % 10 === 0) {
-                await logger.debug(`Received event ${eventCount} for session ${sessionID}: type=${event.type}`);
-              }
+              const sessionIdProp = hasSessionId(event) ? event.properties.sessionID : 'none';
+              await logger.debug(`Received event ${eventCount} for session ${sessionID}: type=${event.type}, eventSessionID=${sessionIdProp}`);
 
               if (sessionCompleted) {
                 break; // Stop yielding events after session completion
@@ -231,19 +240,38 @@ export class OcService {
           }
         );
 
+        // Register handlers on the stream's processor
+        const streamInfo = this.eventStreamManager.getStreamInfo(streamId);
+        if (streamInfo) {
+          const messageHandler = new MessageEventHandler({
+            outputStream: process.stdout,
+            enableFormatting: true,
+          });
+          const sessionHandler = new SessionEventHandler({
+            onSessionComplete: async (sessionId) => {
+              await logger.info(`Session ${sessionId} completed`);
+            }
+          });
+          streamInfo.processor.registerHandler('message-handler', messageHandler);
+          streamInfo.processor.registerHandler('session-handler', sessionHandler);
+        }
+
         // Fire the prompt asynchronously
         await logger.info(`Sending prompt to OpenCode for session ${sessionID} with provider ${this.configService.rawConfig().provider} and model ${this.configService.rawConfig().model}`);
-        result.client.session.prompt({
-          path: { id: sessionID },
-          body: {
-            agent: 'docs',
-            model: {
-              providerID: this.configService.rawConfig().provider,
-              modelID: this.configService.rawConfig().model
-            },
-            parts: [{ type: 'text', text: question }]
-          }
-        }).catch(async (err) => {
+        try {
+          await result.client.session.prompt({
+            path: { id: sessionID },
+            body: {
+              agent: 'docs',
+              model: {
+                providerID: this.configService.rawConfig().provider,
+                modelID: this.configService.rawConfig().model
+              },
+              parts: [{ type: 'text', text: question }]
+            }
+          });
+          await logger.info(`Prompt sent successfully for session ${sessionID}`);
+        } catch (err) {
           const promptError = new OcError(String(err), err);
           await logger.error(`Prompt error for ${tech} (session ${sessionID}): ${err}`);
           await logger.error(`Prompt error stack: ${err instanceof Error ? err.stack : String(err)}`);
@@ -254,7 +282,7 @@ export class OcService {
           }
 
           throw promptError;
-        });
+        }
 
         // Return the processed events through our event processing system
         // Collect events for caching while yielding them
