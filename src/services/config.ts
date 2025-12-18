@@ -6,7 +6,7 @@ import { ConfigError } from '../lib/errors.ts';
 import { cloneRepo, pullRepo } from '../lib/utils/git.ts';
 import { directoryExists, expandHome } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
-import { validateProviderAndModel } from '../lib/utils/validation.ts';
+import { validateProviderAndModel, withTempOpenCodeClient } from '../lib/utils/validation.ts';
 import { createOpencode } from '@opencode-ai/sdk';
 import { StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
 
@@ -410,28 +410,10 @@ export class ConfigService {
 
     // Validate the new configuration before saving
     try {
-      // Inline validation logic
-      const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
-      process.env.OPENCODE_CONFIG_DIR = this.getOpenCodeConfigDir();
-
-      try {
-        const { client, server } = await createOpencode({
-          port: 0,
-          timeout: 10000
-        });
-
-        try {
-          await validateProviderAndModel(client, args.provider, args.model);
-        } finally {
-          server.close();
-        }
-      } finally {
-        if (originalConfigDir !== undefined) {
-          process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
-        } else {
-          delete process.env.OPENCODE_CONFIG_DIR;
-        }
-      }
+      // Inline validation logic using helper function
+      await withTempOpenCodeClient(this, async (client) => {
+        await validateProviderAndModel(client, args.provider, args.model);
+      });
 
       await writeConfig(this.config);
       await logger.info(`Model configuration updated to ${args.provider}/${args.model}`);
