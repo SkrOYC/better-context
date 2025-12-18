@@ -70,19 +70,7 @@ export class InvalidTechError extends Error {
   }
 }
 
-export class RetryableError extends Error {
-  readonly _tag = "RetryableError";
-  constructor(override readonly message: string, override readonly cause?: unknown) {
-    super(message);
-  }
-}
 
-export class NonRetryableError extends Error {
-  readonly _tag = "NonRetryableError";
-  constructor(override readonly message: string, override readonly cause?: unknown) {
-    super(message);
-  }
-}
 
 export class StartupValidationError extends Error {
   readonly _tag = "StartupValidationError";

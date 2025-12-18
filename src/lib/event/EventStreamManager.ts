@@ -23,7 +23,6 @@ export interface ActiveStream {
 
 export class EventStreamManager {
   private activeStreams = new Map<string, ActiveStream>();
-  private cleanupInterval?: NodeJS.Timeout;
 
   private defaultConfig = {
     timeoutMs: 30 * 60 * 1000, // 30 minutes
@@ -32,7 +31,6 @@ export class EventStreamManager {
   };
 
   constructor() {
-    this.startCleanupInterval();
   }
 
   /**
@@ -47,13 +45,7 @@ export class EventStreamManager {
     }
 
     // Create a dedicated processor for this stream
-    const streamProcessor = new EventProcessor({
-      bufferSize: 1000,
-      maxConcurrentHandlers: 5,
-      processingRateLimit: 100,
-      enableBackpressure: true,
-      backpressureThreshold: 500,
-    });
+    const streamProcessor = new EventProcessor();
 
     const activeStream: ActiveStream = {
       id: config.id,
@@ -198,54 +190,9 @@ export class EventStreamManager {
     logger.info('All streams stopped');
   }
 
-  /**
-   * Clean up stale streams (timed out or completed)
-   */
-  async cleanupStaleStreams(): Promise<number> {
-    const now = Date.now();
-    const streamsToRemove: string[] = [];
 
-    for (const [id, stream] of this.activeStreams.entries()) {
-      // Check for timeout
-      const timeSinceActivity = now - stream.lastActivity.getTime();
-      if (stream.status === 'active' && timeSinceActivity > stream.config.timeoutMs!) {
-        this.markStreamTimeout(id);
-        streamsToRemove.push(id);
-      }
 
-      // Check for completed/error streams that can be cleaned up
-      if (stream.status !== 'active') {
-        // Keep completed/error streams for a short time for debugging
-        const timeSinceCompletion = now - stream.lastActivity.getTime();
-        if (timeSinceCompletion > 60000) { // 1 minute
-          streamsToRemove.push(id);
-        }
-      }
-    }
 
-    // Remove stale streams
-    for (const id of streamsToRemove) {
-      await this.stopStream(id);
-    }
-
-    if (streamsToRemove.length > 0) {
-      logger.info(`Cleaned up ${streamsToRemove.length} stale streams`);
-    }
-
-    return streamsToRemove.length;
-  }
-
-  /**
-   * Start the cleanup interval
-   */
-  private startCleanupInterval(): void {
-    // Clean up every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupStaleStreams().catch(error => {
-        logger.error(`Error in cleanup interval: ${error}`);
-      });
-    }, 5 * 60 * 1000);
-  }
 
   /**
    * Get manager metrics
@@ -273,11 +220,6 @@ export class EventStreamManager {
    * Shutdown the manager and clean up all resources
    */
   async shutdown(): Promise<void> {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = undefined;
-    }
-
     await this.stopAllStreams();
 
     logger.info('EventStreamManager shutdown complete');

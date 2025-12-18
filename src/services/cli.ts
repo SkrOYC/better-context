@@ -5,7 +5,7 @@ import { Command } from 'commander';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
 import { createOpencode } from '@opencode-ai/sdk';
-import { InvalidTechError, RetryableError, NonRetryableError, StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
+import { InvalidTechError, StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
 import { directoryExists } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
 
@@ -27,14 +27,7 @@ const handleCommandError = (e: any): void => {
     console.error(`Connected providers: ${e.connectedProviders.join(', ')}`);
     console.error(`Run "opencode auth" to configure provider credentials.`);
     throw e;
-  } else if (e instanceof RetryableError) {
-    console.error(`Transient error: ${e.message}`);
-    console.error(`This may be due to temporary network issues. Please try again.`);
-    throw e;
-  } else if (e instanceof NonRetryableError) {
-    console.error(`Configuration error: ${e.message}`);
-    console.error(`Please check your settings and try again.`);
-    throw e;
+
   } else if (e.name === 'StartupValidationError') {
     console.error(`Configuration validation failed: ${e.message}`);
     console.error(`Please check your provider/model configuration and network connectivity.`);

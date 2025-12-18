@@ -3,7 +3,6 @@ import {
   InvalidProviderError,
   InvalidModelError,
   ProviderNotConnectedError,
-  NonRetryableError,
 } from "../errors";
 
 export const validateProviderAndModel = async (

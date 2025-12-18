@@ -23,19 +23,14 @@ describe('Event Processing System', () => {
     let processor: EventProcessor;
 
     beforeEach(() => {
-      processor = new EventProcessor({
-        bufferSize: 100,
-        maxConcurrentHandlers: 5,
-        processingRateLimit: 10,
-        enableBackpressure: false,
-      });
+      processor = new EventProcessor();
     });
 
     afterEach(async () => {
       await processor.shutdown();
     });
 
-    it('should buffer events when handlers are registered', async () => {
+    it('should process events when handlers are registered', async () => {
       const mockHandler = {
         canHandle: vi.fn().mockReturnValue(true),
         handle: vi.fn().mockResolvedValue(undefined),
@@ -64,52 +59,7 @@ describe('Event Processing System', () => {
       expect(mockHandler.handle).toHaveBeenCalledTimes(2);
     });
 
-    it('should apply backpressure when buffer is full', async () => {
-      const processor = new EventProcessor({
-        bufferSize: 10,
-        maxConcurrentHandlers: 1,
-        processingRateLimit: 2, // Very slow processing
-        enableBackpressure: true,
-        backpressureThreshold: 5,
-      });
 
-      let handlerCallCount = 0;
-      const slowHandler = {
-        canHandle: vi.fn().mockReturnValue(true),
-        handle: vi.fn().mockImplementation(async () => {
-          handlerCallCount++;
-          // Simulate very slow processing
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }),
-        priority: 0,
-      };
-
-      processor.registerHandler('slow-handler', slowHandler);
-
-      // Create events faster than they can be processed
-      const events: Event[] = Array.from({ length: 8 }, () => ({
-        type: 'test.event',
-        properties: {},
-      }));
-
-      const eventStream = {
-        async *[Symbol.asyncIterator]() {
-          for (const event of events) {
-            yield event;
-            // Yield events much faster than processing rate
-            await new Promise(resolve => setTimeout(resolve, 50));
-          }
-        },
-      };
-
-      const startTime = Date.now();
-      await processor.processEventStream(eventStream);
-      const duration = Date.now() - startTime;
-
-      // Should have taken significant time due to backpressure
-      expect(duration).toBeGreaterThan(1000);
-      expect(handlerCallCount).toBe(8);
-    }, 10000); // Increase timeout for this test
 
     it('should handle handler errors gracefully', async () => {
       const errorHandler = {
@@ -397,24 +347,7 @@ describe('Event Processing System', () => {
       expect(mockStdout.write).toHaveBeenCalledWith(' world');
     });
 
-    it('should track message buffer state', async () => {
-      const event: Event = {
-        type: 'message.part.updated',
-        properties: {
-          part: {
-            type: 'text',
-            messageID: 'test-message',
-            text: 'Test content',
-          },
-        },
-      };
 
-      await handler.handle(event);
-
-      const info = handler.getCurrentMessageInfo();
-      expect(info.currentMessageId).toBe('test-message');
-      expect(info.bufferedMessages).toBe(1);
-    });
   });
 
   describe('SessionEventHandler', () => {
@@ -517,7 +450,7 @@ describe('Event Processing System', () => {
       await processor.shutdown();
 
       // Verify handlers were called appropriately
-      expect(messageHandler.getCurrentMessageInfo().bufferedMessages).toBe(1);
+      // Handler tests removed as getCurrentMessageInfo was simplified
     });
   });
 });

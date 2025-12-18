@@ -1,5 +1,6 @@
 import type { Event } from '@opencode-ai/sdk';
 import type { EventHandler } from '../EventProcessor.ts';
+import type { Event as SdkEvent } from '@opencode-ai/sdk';
 import type { SessionErrorEvent, SessionIdleEvent, EventWithSessionId } from '../../types/events.ts';
 import { isSessionErrorEvent, isSessionIdleEvent, hasSessionId } from '../../utils/type-guards.ts';
 import { logger } from '../../utils/logger.ts';
@@ -18,7 +19,7 @@ export class SessionEventHandler implements EventHandler<SessionErrorEvent | Ses
     this.options = options;
   }
 
-  canHandle(event: Event): event is SessionErrorEvent | SessionIdleEvent {
+  canHandle(event: SdkEvent): event is SessionErrorEvent | SessionIdleEvent {
     return isSessionErrorEvent(event) || isSessionIdleEvent(event);
   }
 
@@ -121,7 +122,7 @@ export class SessionEventHandler implements EventHandler<SessionErrorEvent | Ses
       onSessionError: (sessionId, error) => {
         logger.error(`Session ${sessionId} encountered error: ${error.message}`);
         // Could add additional error handling logic here
-        // e.g., retry logic, cleanup, notifications, etc.
+        // Could add additional error handling logic here
       },
       onSessionComplete: (sessionId) => {
         logger.info(`Session ${sessionId} processing completed successfully`);

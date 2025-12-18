@@ -1,5 +1,6 @@
 import type { Event } from '@opencode-ai/sdk';
 import type { EventHandler } from '../EventProcessor.ts';
+import type { Event as SdkEvent } from '@opencode-ai/sdk';
 import type { ToolPartUpdatedEvent, ToolPart } from '../../types/events.ts';
 import { isToolEvent } from '../../utils/type-guards.ts';
 import { logger } from '../../utils/logger.ts';
@@ -21,7 +22,7 @@ export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
     };
   }
 
-  canHandle(event: Event): event is ToolPartUpdatedEvent {
+  canHandle(event: SdkEvent): event is ToolPartUpdatedEvent {
     return isToolEvent(event);
   }
 

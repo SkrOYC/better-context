@@ -27,12 +27,7 @@ type Config = {
   provider: string;
   sessionTimeoutMinutes: number;
   maxRetries: number;
-  baseBackoffMs: number;
-  maxBackoffMs: number;
-  maxInstancesPerTech: number;
-  maxTotalInstances: number;
-  maxConcurrentSessionsPerTech: number;
-  maxTotalSessions: number;
+
   opencodeConfigDir: string;
   // Network and timing
   opencodeBasePort: number;
@@ -40,20 +35,6 @@ type Config = {
   requestTimeoutMs: number;
   // Cache settings
   repoCacheTtlMs: number;
-  responseCacheTtlMs: number;
-  validationCacheTtlMs: number;
-  sessionReuseTimeoutMs: number;
-  // Event processing
-  maxEventBufferSize: number;
-  eventProcessingRateLimit: number;
-  backpressureThreshold: number;
-  // Queue settings
-  maxQueueSize: number;
-  queueTimeoutMs: number;
-  // Instance management
-  instanceTimeoutMs: number;
-  // Monitoring
-  metricsIntervalMs: number;
 };
 
 // Repository caching interfaces
@@ -148,33 +129,14 @@ const DEFAULT_CONFIG: Config = {
   provider: 'opencode',
   sessionTimeoutMinutes: 30,
   maxRetries: 3,
-  baseBackoffMs: 1000,
-  maxBackoffMs: 30000,
-  maxInstancesPerTech: 3,
-  maxTotalInstances: 10,
-  maxConcurrentSessionsPerTech: 5,
-  maxTotalSessions: 20,
+
   opencodeConfigDir: '~/.config/btca/opencode',
   // Network and timing
   opencodeBasePort: 3420,
   opencodePortRange: 5, // 3420-3424
   requestTimeoutMs: 10000, // 10 seconds
-  // Cache settings
-  repoCacheTtlMs: 15 * 60 * 1000, // 15 minutes
-  responseCacheTtlMs: 10 * 60 * 1000, // 10 minutes
-  validationCacheTtlMs: 5 * 60 * 1000, // 5 minutes
-  sessionReuseTimeoutMs: 15 * 60 * 1000, // 15 minutes
-  // Event processing
-  maxEventBufferSize: 10000,
-  eventProcessingRateLimit: 1000,
-  backpressureThreshold: 500,
-  // Queue settings
-  maxQueueSize: 50,
-  queueTimeoutMs: 30000, // 30 seconds
-  // Instance management
-  instanceTimeoutMs: 30 * 60 * 1000, // 30 minutes
-  // Monitoring
-  metricsIntervalMs: 5 * 60 * 1000 // 5 minutes
+   // Cache settings
+   repoCacheTtlMs: 15 * 60 * 1000, // 15 minutes
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -225,7 +187,7 @@ const OPENCODE_CONFIG = (args: {
         prompt: getDocsAgentPrompt({
           repoName: args.repoName,
           repoPath: path.join(args.reposDirectory, args.repoName),
-          specialNotes: args.specialNotes
+          specialNotes: args.specialNotes ?? ''
         }),
         disable: false,
         description: 'Get answers about libraries and frameworks by searching their source code',
@@ -288,18 +250,8 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
          (typeof parsed.sessionTimeoutMinutes === 'number' && parsed.sessionTimeoutMinutes > 0);
        const hasValidMaxRetries = parsed.maxRetries === undefined ||
          (typeof parsed.maxRetries === 'number' && parsed.maxRetries >= 0);
-       const hasValidBaseBackoff = parsed.baseBackoffMs === undefined ||
-         (typeof parsed.baseBackoffMs === 'number' && parsed.baseBackoffMs > 0);
-       const hasValidMaxBackoff = parsed.maxBackoffMs === undefined ||
-         (typeof parsed.maxBackoffMs === 'number' && parsed.maxBackoffMs > 0);
-       const hasValidMaxInstancesPerTech = parsed.maxInstancesPerTech === undefined ||
-         (typeof parsed.maxInstancesPerTech === 'number' && parsed.maxInstancesPerTech > 0);
-       const hasValidMaxTotalInstances = parsed.maxTotalInstances === undefined ||
-         (typeof parsed.maxTotalInstances === 'number' && parsed.maxTotalInstances > 0);
-       const hasValidMaxConcurrentSessionsPerTech = parsed.maxConcurrentSessionsPerTech === undefined ||
-         (typeof parsed.maxConcurrentSessionsPerTech === 'number' && parsed.maxConcurrentSessionsPerTech > 0);
-        const hasValidMaxTotalSessions = parsed.maxTotalSessions === undefined ||
-          (typeof parsed.maxTotalSessions === 'number' && parsed.maxTotalSessions > 0);
+
+
         const hasValidOpenCodeConfigDir = parsed.opencodeConfigDir === undefined ||
           typeof parsed.opencodeConfigDir === 'string';
         const hasValidOpenCodeBasePort = parsed.opencodeBasePort === undefined ||
@@ -310,26 +262,7 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
           (typeof parsed.requestTimeoutMs === 'number' && parsed.requestTimeoutMs > 0);
         const hasValidRepoCacheTtl = parsed.repoCacheTtlMs === undefined ||
           (typeof parsed.repoCacheTtlMs === 'number' && parsed.repoCacheTtlMs > 0);
-        const hasValidResponseCacheTtl = parsed.responseCacheTtlMs === undefined ||
-          (typeof parsed.responseCacheTtlMs === 'number' && parsed.responseCacheTtlMs > 0);
-        const hasValidValidationCacheTtl = parsed.validationCacheTtlMs === undefined ||
-          (typeof parsed.validationCacheTtlMs === 'number' && parsed.validationCacheTtlMs > 0);
-        const hasValidSessionReuseTimeout = parsed.sessionReuseTimeoutMs === undefined ||
-          (typeof parsed.sessionReuseTimeoutMs === 'number' && parsed.sessionReuseTimeoutMs > 0);
-        const hasValidMaxEventBufferSize = parsed.maxEventBufferSize === undefined ||
-          (typeof parsed.maxEventBufferSize === 'number' && parsed.maxEventBufferSize > 0);
-        const hasValidEventProcessingRateLimit = parsed.eventProcessingRateLimit === undefined ||
-          (typeof parsed.eventProcessingRateLimit === 'number' && parsed.eventProcessingRateLimit > 0);
-        const hasValidBackpressureThreshold = parsed.backpressureThreshold === undefined ||
-          (typeof parsed.backpressureThreshold === 'number' && parsed.backpressureThreshold > 0);
-        const hasValidMaxQueueSize = parsed.maxQueueSize === undefined ||
-          (typeof parsed.maxQueueSize === 'number' && parsed.maxQueueSize > 0);
-        const hasValidQueueTimeout = parsed.queueTimeoutMs === undefined ||
-          (typeof parsed.queueTimeoutMs === 'number' && parsed.queueTimeoutMs > 0);
-        const hasValidInstanceTimeout = parsed.instanceTimeoutMs === undefined ||
-          (typeof parsed.instanceTimeoutMs === 'number' && parsed.instanceTimeoutMs > 0);
-        const hasValidMetricsInterval = parsed.metricsIntervalMs === undefined ||
-          (typeof parsed.metricsIntervalMs === 'number' && parsed.metricsIntervalMs > 0);
+
 
         const validationChecks = [
           hasValidReposDirectory,
@@ -338,27 +271,12 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
           hasValidProvider,
           hasValidSessionTimeout,
           hasValidMaxRetries,
-          hasValidBaseBackoff,
-          hasValidMaxBackoff,
-          hasValidMaxInstancesPerTech,
-          hasValidMaxTotalInstances,
-          hasValidMaxConcurrentSessionsPerTech,
-          hasValidMaxTotalSessions,
+
           hasValidOpenCodeConfigDir,
           hasValidOpenCodeBasePort,
           hasValidOpenCodePortRange,
           hasValidRequestTimeout,
-          hasValidRepoCacheTtl,
-          hasValidResponseCacheTtl,
-          hasValidValidationCacheTtl,
-          hasValidSessionReuseTimeout,
-          hasValidMaxEventBufferSize,
-          hasValidEventProcessingRateLimit,
-          hasValidBackpressureThreshold,
-          hasValidMaxQueueSize,
-          hasValidQueueTimeout,
-          hasValidInstanceTimeout,
-          hasValidMetricsInterval
+          hasValidRepoCacheTtl
         ];
 
         if (validationChecks.some(check => !check)) {
@@ -369,27 +287,12 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 - \`provider\` (string)
 - \`sessionTimeoutMinutes\` (positive number, optional)
 - \`maxRetries\` (non-negative number, optional)
-- \`baseBackoffMs\` (positive number, optional)
-- \`maxBackoffMs\` (positive number, optional)
-- \`maxInstancesPerTech\` (positive number, optional)
-- \`maxTotalInstances\` (positive number, optional)
-- \`maxConcurrentSessionsPerTech\` (positive number, optional)
-- \`maxTotalSessions\` (positive number, optional)
+
 - \`opencodeConfigDir\` (string, optional)
 - \`opencodeBasePort\` (positive number, optional)
 - \`opencodePortRange\` (positive number, optional)
 - \`requestTimeoutMs\` (positive number, optional)
-- \`repoCacheTtlMs\` (positive number, optional)
-- \`responseCacheTtlMs\` (positive number, optional)
-- \`validationCacheTtlMs\` (positive number, optional)
-- \`sessionReuseTimeoutMs\` (positive number, optional)
-- \`maxEventBufferSize\` (positive number, optional)
-- \`eventProcessingRateLimit\` (positive number, optional)
-- \`backpressureThreshold\` (positive number, optional)
-- \`maxQueueSize\` (positive number, optional)
-- \`queueTimeoutMs\` (positive number, optional)
-- \`instanceTimeoutMs\` (positive number, optional)
-- \`metricsIntervalMs\` (positive number, optional)`);
+- \`repoCacheTtlMs\` (positive number, optional)`);
         }
       const reposDir = expandHome(parsed.reposDirectory);
        config = {
@@ -399,33 +302,14 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
          provider: parsed.provider,
          sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 30,
          maxRetries: parsed.maxRetries ?? 3,
-         baseBackoffMs: parsed.baseBackoffMs ?? 1000,
-         maxBackoffMs: parsed.maxBackoffMs ?? 30000,
-          maxInstancesPerTech: parsed.maxInstancesPerTech ?? 3,
-          maxTotalInstances: parsed.maxTotalInstances ?? 10,
-          maxConcurrentSessionsPerTech: parsed.maxConcurrentSessionsPerTech ?? 5,
-          maxTotalSessions: parsed.maxTotalSessions ?? 20,
+
           opencodeConfigDir: parsed.opencodeConfigDir ?? expandHome('~/.config/btca/opencode'),
           // Network and timing
           opencodeBasePort: parsed.opencodeBasePort ?? 3420,
           opencodePortRange: parsed.opencodePortRange ?? 5,
           requestTimeoutMs: parsed.requestTimeoutMs ?? 10000,
           // Cache settings
-          repoCacheTtlMs: parsed.repoCacheTtlMs ?? (15 * 60 * 1000),
-          responseCacheTtlMs: parsed.responseCacheTtlMs ?? (10 * 60 * 1000),
-          validationCacheTtlMs: parsed.validationCacheTtlMs ?? (5 * 60 * 1000),
-          sessionReuseTimeoutMs: parsed.sessionReuseTimeoutMs ?? (15 * 60 * 1000),
-          // Event processing
-          maxEventBufferSize: parsed.maxEventBufferSize ?? 10000,
-          eventProcessingRateLimit: parsed.eventProcessingRateLimit ?? 1000,
-          backpressureThreshold: parsed.backpressureThreshold ?? 500,
-          // Queue settings
-          maxQueueSize: parsed.maxQueueSize ?? 50,
-          queueTimeoutMs: parsed.queueTimeoutMs ?? 30000,
-          // Instance management
-          instanceTimeoutMs: parsed.instanceTimeoutMs ?? (30 * 60 * 1000),
-          // Monitoring
-          metricsIntervalMs: parsed.metricsIntervalMs ?? (5 * 60 * 1000)
+          repoCacheTtlMs: parsed.repoCacheTtlMs ?? (15 * 60 * 1000)
         };
     }
     // Apply environment variable overrides
@@ -514,7 +398,7 @@ export class ConfigService {
     return OPENCODE_CONFIG({
       repoName: args.repoName,
       reposDirectory: this.config.reposDirectory,
-      specialNotes: repo?.specialNotes
+      ...(repo?.specialNotes && { specialNotes: repo.specialNotes })
     });
   }
 
@@ -584,29 +468,9 @@ export class ConfigService {
     return this.config.maxRetries;
   }
 
-  getBaseBackoffMs(): number {
-    return this.config.baseBackoffMs;
-  }
 
-  getMaxBackoffMs(): number {
-    return this.config.maxBackoffMs;
-  }
 
-  getMaxInstancesPerTech(): number {
-    return this.config.maxInstancesPerTech;
-  }
 
-  getMaxTotalInstances(): number {
-    return this.config.maxTotalInstances;
-  }
-
-  getMaxConcurrentSessionsPerTech(): number {
-    return this.config.maxConcurrentSessionsPerTech;
-  }
-
-  getMaxTotalSessions(): number {
-    return this.config.maxTotalSessions;
-  }
 
   getValidationService(): ValidationService {
     return this.validationService;
@@ -641,47 +505,5 @@ export class ConfigService {
     return this.config.repoCacheTtlMs;
   }
 
-  getResponseCacheTtlMs(): number {
-    return this.config.responseCacheTtlMs;
-  }
 
-  getValidationCacheTtlMs(): number {
-    return this.config.validationCacheTtlMs;
-  }
-
-  getSessionReuseTimeoutMs(): number {
-    return this.config.sessionReuseTimeoutMs;
-  }
-
-  // Event processing
-  getMaxEventBufferSize(): number {
-    return this.config.maxEventBufferSize;
-  }
-
-  getEventProcessingRateLimit(): number {
-    return this.config.eventProcessingRateLimit;
-  }
-
-  getBackpressureThreshold(): number {
-    return this.config.backpressureThreshold;
-  }
-
-  // Queue settings
-  getMaxQueueSize(): number {
-    return this.config.maxQueueSize;
-  }
-
-  getQueueTimeoutMs(): number {
-    return this.config.queueTimeoutMs;
-  }
-
-  // Instance management
-  getInstanceTimeoutMs(): number {
-    return this.config.instanceTimeoutMs;
-  }
-
-  // Monitoring
-  getMetricsIntervalMs(): number {
-    return this.config.metricsIntervalMs;
-  }
 }

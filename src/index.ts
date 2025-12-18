@@ -12,10 +12,7 @@ let oc: OcService | null = null;
 const shutdown = async (signal: string, exitCode: number = 0): Promise<void> => {
   try {
     await logger.info(`Received ${signal}, shutting down gracefully...`);
-    if (oc) {
-      await oc.cleanupAllSessions();
-      await oc.cleanupOrphanedProcesses();
-    }
+
     await logger.info('Shutdown complete');
   } catch (error) {
     await logger.error(`Error during shutdown: ${error}`);
@@ -30,7 +27,7 @@ function setupGracefulShutdown(): void {
   process.on('SIGUSR2', () => { shutdown('SIGUSR2'); }); // nodemon restart
 }
 
-async function main(): Promise<never> {
+async function main(): Promise<void> {
   try {
     // Initialize ConfigService first (without validation)
     const config = new ConfigService();
@@ -45,9 +42,6 @@ async function main(): Promise<never> {
 
     // Setup graceful shutdown handlers
     setupGracefulShutdown();
-
-    // Cleanup orphaned processes on startup
-    await oc.cleanupOrphanedProcesses();
 
     const cli = new CliService(oc, config);
     const args = hasNoArgs ? ['--help'] : process.argv.slice(2);

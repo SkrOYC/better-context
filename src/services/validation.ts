@@ -1,7 +1,7 @@
 import { createOpencode, type OpencodeClient } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
 import { validateProviderAndModel } from '../lib/utils/validation.ts';
-import { ValidationCache, validationCache, type ValidationKey } from '../lib/utils/validation-cache.ts';
+
 import { logger } from '../lib/utils/logger.ts';
 import { StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
 
@@ -12,12 +12,10 @@ export interface ValidationConfig {
 
 export class ValidationService {
   private configService: ConfigService;
-  private cache: ValidationCache;
   private isInitialized = false;
 
-  constructor(configService: ConfigService, cache: ValidationCache = validationCache) {
+  constructor(configService: ConfigService) {
     this.configService = configService;
-    this.cache = cache;
   }
 
   async initialize(options: ValidationConfig = {}): Promise<void> {
@@ -64,7 +62,7 @@ export class ValidationService {
 
         try {
           // Validate the configured provider/model combination
-          await this.validateProviderAndModelCached(client, { provider, model });
+          await this.validateProviderAndModel(client, provider, model);
           await logger.info('Startup validation completed successfully');
         } finally {
           // Always clean up the temporary server
@@ -84,41 +82,14 @@ export class ValidationService {
     }
   }
 
-  async validateProviderAndModelCached(
+  async validateProviderAndModel(
     client: OpencodeClient,
-    key: ValidationKey,
-    forceRefresh = false
+    provider: string,
+    model: string
   ): Promise<void> {
-    // Check cache first unless force refresh is requested
-    if (!forceRefresh) {
-      const cached = this.cache.get(key);
-      if (cached) {
-        if (cached.isValid) {
-          await logger.debug(`Using cached valid result for ${key.provider}/${key.model}`);
-          return;
-        } else {
-          // Cached invalid result - rethrow the error
-          throw new Error(cached.error || 'Cached validation failed');
-        }
-      }
-    }
-
-    // Perform fresh validation
-    try {
-      await validateProviderAndModel(client, key.provider, key.model);
-
-      // Cache successful validation
-      this.cache.set(key, { isValid: true });
-      await logger.debug(`Validation successful and cached for ${key.provider}/${key.model}`);
-
-    } catch (error) {
-      // Cache failed validation
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.cache.set(key, { isValid: false, error: errorMessage });
-
-      await logger.debug(`Validation failed and cached for ${key.provider}/${key.model}: ${errorMessage}`);
-      throw error;
-    }
+    // Perform validation without caching
+    await validateProviderAndModel(client, provider, model);
+    await logger.debug(`Validation successful for ${provider}/${model}`);
   }
 
   async validateCurrentConfig(): Promise<void> {
@@ -137,7 +108,7 @@ export class ValidationService {
         });
 
         try {
-          await this.validateProviderAndModelCached(client, { provider, model }, true); // Force refresh
+          await this.validateProviderAndModel(client, provider, model);
         } finally {
           server.close();
         }
@@ -157,20 +128,7 @@ export class ValidationService {
     }
   }
 
-  invalidateCache(key?: ValidationKey): void {
-    this.cache.invalidate(key);
-    const scope = key ? `${key.provider}/${key.model}` : 'all entries';
-    logger.resource(`Validation cache invalidated for ${scope}`);
-  }
 
-  invalidateProviderCache(provider: string): void {
-    this.cache.invalidateProvider(provider);
-    logger.resource(`Validation cache invalidated for provider ${provider}`);
-  }
-
-  getCacheStats() {
-    return this.cache.getStats();
-  }
 
   async shutdown(): Promise<void> {
     // No special cleanup needed for validation service
