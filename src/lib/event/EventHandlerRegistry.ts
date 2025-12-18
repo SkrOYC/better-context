@@ -42,7 +42,7 @@ export class EventHandlerRegistry {
     this.handlers.set(name, handler);
     this.handlerToNameMap.set(handler, name);
     this.handlerMetadata.set(name, {
-      eventTypes,
+      ...(eventTypes ? { eventTypes } : {}),
       priority,
       registrationTime: new Date(),
       executionCount: 0,
