@@ -21,8 +21,14 @@ export class ServerHeartbeatEventHandler implements EventHandler<any> {
     };
   }
 
-  canHandle(event: SdkEvent): event is any {
-    return (event as any).type === 'server.heartbeat';
+  canHandle(event: SdkEvent): event is SdkEvent & { type: 'server.heartbeat' } {
+    // NOTE: 'server.heartbeat' is NOT in the SDK's Event union type.
+    // The SDK defines 'server.connected' but this handler appears to handle
+    // 'server.heartbeat' events which may be emitted by the server but undocumented.
+    // This could be legacy code or an internal event type.
+    return event && typeof event === 'object' && 'type' in event && 
+           // @ts-expect-error - server.heartbeat is not in SDK Event union but may be emitted by server
+           event.type === 'server.heartbeat';
   }
 
   async handle(event: SdkEvent): Promise<void> {

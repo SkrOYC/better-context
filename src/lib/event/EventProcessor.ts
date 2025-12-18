@@ -1,6 +1,7 @@
 import type { Event } from '@opencode-ai/sdk';
 import type { Event as SdkEvent } from '@opencode-ai/sdk';
 import { logger } from '../utils/logger.ts';
+import { isMessageUpdatedEvent } from '../utils/type-guards.ts';
 
 export interface EventHandler<T extends SdkEvent = SdkEvent> {
   canHandle(event: SdkEvent): event is T;
@@ -64,22 +65,21 @@ export class EventProcessor {
       logger.debug(`No handlers found for event type: ${event.type}`);
 
       // Add detailed logging for message.updated events
-      if (event.type === 'message.updated') {
-        const props = event.properties as any;
-        const messageInfo = props?.info;
+      if (isMessageUpdatedEvent(event)) {
+        const messageInfo = event.properties.info;
         const details = {
-          sessionID: messageInfo?.sessionID,
-          messageID: messageInfo?.id,
-          hasText: !!messageInfo?.text,
-          textLength: messageInfo?.text?.length || 0,
-          hasParts: !!messageInfo?.parts,
-          partsCount: messageInfo?.parts?.length || 0,
-          role: messageInfo?.role
+          sessionID: messageInfo.sessionID,
+          messageID: messageInfo.id,
+          role: messageInfo.role,
+          hasText: !!messageInfo.text,
+          textLength: messageInfo.text?.length ?? 0,
+          hasParts: !!messageInfo.parts,
+          partsCount: messageInfo.parts?.length ?? 0,
         };
         logger.debug(`Unhandled message.updated details: ${JSON.stringify(details)}`);
 
         // Log first 10 chars of text if available
-        if (messageInfo?.text) {
+        if (messageInfo.text) {
           const preview = messageInfo.text.substring(0, 10);
           logger.debug(`Message text preview: "${preview}${messageInfo.text.length > 10 ? '...' : ''}"`);
         }
@@ -91,6 +91,7 @@ export class EventProcessor {
     // Call handlers in the order they were registered
     for (const { name, handler } of applicableHandlers) {
       try {
+        // Safe cast: handler.canHandle() type guard ensures event matches handler's expected type
         await handler.handle(event as any);
       } catch (error) {
         logger.error(`Error in event handler ${name}: ${error}`);

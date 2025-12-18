@@ -1,9 +1,24 @@
-import type { Event } from '@opencode-ai/sdk';
+import type { 
+  Event,
+  Part,
+  TextPart,
+  ToolPart,
+  ToolState,
+  ToolStateCompleted,
+  ToolStateError,
+  Message
+} from '@opencode-ai/sdk';
 
 /**
  * SDK-compliant event type definitions with discriminated unions
- * Based on OpenCode SDK event structure and observed usage patterns
+ * Based on OpenCode SDK event structure
+ * 
+ * Note: We import Part, ToolPart, and related types directly from the SDK
+ * to ensure type alignment and avoid duplication.
  */
+
+// Re-export Part type from SDK for convenience
+export type { Part, TextPart, ToolPart, ToolState, ToolStateCompleted, ToolStateError } from '@opencode-ai/sdk';
 
 // Base event properties that all events share
 export interface BaseEventProperties {
@@ -11,15 +26,6 @@ export interface BaseEventProperties {
   [key: string]: unknown;
 }
 
-// Message event properties - union type for different part types
-export type MessagePart =
-  | {
-      messageID: string;
-      text?: string;
-      delta?: string;
-      type: 'text' | 'image' | 'file';
-    }
-  | ToolPart;
 
 // Full message info from message.updated events
 export interface MessageInfo {
@@ -52,11 +58,12 @@ export interface MessageInfo {
   };
   finish?: string;
   text?: string;
-  parts?: Array<any>;
+  parts?: Array<Part>;
 }
 
 export interface MessageEventProperties extends BaseEventProperties {
-  part: MessagePart;
+  part: Part;
+  delta?: string;  // Delta is at event level per SDK, not on the part itself
 }
 
 // Message updated event properties
@@ -94,24 +101,6 @@ export interface ServerConnectedProperties extends BaseEventProperties {
 }
 
 
-
-// Tool event properties (matches SDK ToolPart)
-export interface ToolPart {
-  id: string;
-  sessionID: string;
-  messageID: string;
-  type: "tool";
-  callID: string;
-  tool: string;
-  state: {
-    status: "pending" | "running" | "completed" | "error";
-    input: { [key: string]: unknown };
-    [key: string]: unknown;
-  };
-  metadata?: {
-    [key: string]: unknown;
-  };
-}
 
 // Discriminated union types for type-safe event handling
 export type MessagePartUpdatedEvent = Event & {

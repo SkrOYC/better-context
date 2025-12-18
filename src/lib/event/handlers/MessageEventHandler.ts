@@ -1,7 +1,7 @@
 import type { EventHandler } from '../EventProcessor.ts';
 import type { Event as SdkEvent } from '@opencode-ai/sdk';
 import type { MessagePartUpdatedEvent } from '../../types/events.ts';
-import { isMessageEvent, isTextMessagePart } from '../../utils/type-guards.ts';
+import { isMessageEvent, isTextPart, getEventDelta, getTextPartText } from '../../utils/type-guards.ts';
 import { logger } from '../../utils/logger.ts';
 
 export interface MessageEventHandlerOptions {
@@ -30,13 +30,14 @@ export class MessageEventHandler implements EventHandler<MessagePartUpdatedEvent
       const part = event.properties.part;
 
       // Only handle text message parts
-      if (!isTextMessagePart(part)) {
+      if (!isTextPart(part)) {
         return;
       }
 
-       const delta = (part as any).delta ?? '';
-       const fullText = (part as any).text;
-       const messageID = (part as any).messageID;
+      // CRITICAL: delta is at event.properties level, not on the part itself
+      const delta = getEventDelta(event);
+      const fullText = getTextPartText(part);
+      const messageID = part.messageID;
 
        // Output incremental deltas for streaming
        if (delta) {
