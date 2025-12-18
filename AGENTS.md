@@ -56,7 +56,7 @@ Available <tech>: svelte, tailwindcss, opentui, runed
 ## Architecture
 
 ### High-Level Architecture
-btca is an **event-driven CLI** that integrates with the OpenCode SDK to provide AI-powered code analysis. The system is designed around **resource pooling** and **efficient session management**.
+btca is an **event-driven CLI** that integrates with the OpenCode SDK to provide AI-powered code analysis. The system is designed around **repository caching** and **efficient session management**.
 
 ### Core Components
 - **CLI Service** (`src/services/cli.ts`): Entry point and command routing
@@ -72,17 +72,17 @@ btca is an **event-driven CLI** that integrates with the OpenCode SDK to provide
 
 ### Key Architectural Patterns
 - **Event-Driven Architecture**: All communication happens through typed event handlers
-- **Resource Pooling**: OpenCode instances and sessions are pooled for efficiency
-- **Multi-Level Caching**: Responses, repositories, and validation with different TTLs
+- **Repository Caching**: Smart caching of git operations with configurable TTL for performance optimization
+- **Session Management**: Creates and manages OpenCode sessions for each query
 - **Graceful Degradation**: Queue-based resource management under load
 
-### Session Management System
-btca implements sophisticated session management to optimize performance:
+### Session Management
+btca implements session management for OpenCode integration:
 
-- **Session Pool**: 15-minute reuse windows for same-tech queries
-- **Resource Pool**: OpenCode instance pooling (3 per tech, 10 total, 30-min timeout)
-- **Session Coordinator**: Lifecycle management, limit enforcement, automatic cleanup
-- **Queue System**: Graceful handling of concurrent request limits (max 50 queued)
+- **Session Lifecycle**: Creates and manages OpenCode sessions for each query
+- **Instance Management**: Coordinates OpenCode server instances with automatic port allocation
+- **Resource Coordination**: Manages session lifecycle and automatic cleanup
+- **Error Handling**: Graceful handling of session errors and timeouts
 
 ### Event Processing Pipeline
 The event system handles multiple event types through specialized handlers:
@@ -116,17 +116,17 @@ btca config repos clear
 ```
 
 ### Repository Management
-- **Smart Caching**: 15-minute validation cache, 30-minute repository cache
-- **Lazy Operations**: Repositories cloned/updated only when needed
-- **Conflict Resolution**: Automatic port allocation with retry logic
-- **Git Integration**: Proper repository state management
+- **Repository Caching**: Repository clone/pull operations are cached for 15 minutes (configurable via `repoCacheTtlMs`)
+- **Lazy Operations**: Repositories cloned/updated only when needed based on cache TTL
+- **Cache Invalidation**: Time-based cache expiration with manual clearing via `btca config repos clear`
+- **Git Integration**: Proper repository state management with cache-aware operations
 
 ## Performance and Reliability
 
-### Multi-Level Caching System
-- **Response Cache**: 10-minute TTL for identical questions
-- **Repository Cache**: 30-minute TTL for cloned repositories
-- **Validation Cache**: 5-minute TTL for configuration validation
+### Performance Optimization
+- **Repository Cache**: 15-minute TTL for repository clone/pull operations (configurable via `repoCacheTtlMs`)
+- **Cache Metrics**: Real-time cache statistics including hit rates and expiration tracking
+- **Performance Monitoring**: Cache performance metrics available via CLI commands
 
 ### Error Handling Strategy
 - **Typed Exceptions**: Custom error classes in `src/lib/errors.ts`
@@ -176,6 +176,18 @@ btca config repos remove --name react
 btca config repos clear
 ```
 
+### Cache Configuration
+```bash
+# View current cache TTL (shown in config)
+btca config repos list
+
+# Update cache TTL (requires manual config edit)
+# Edit ~/.config/btca/btca.json and modify repoCacheTtlMs value
+
+# Clear repository cache
+btca config repos clear
+```
+
 ### Configuration Validation
-- Startup validation with 5-min caching.
-- Fail-open for network issues; dynamic updates without restart.
+- Startup validation with fail-open for network issues.
+- Dynamic updates without restart required.
