@@ -1,6 +1,7 @@
 import { CliService } from './services/cli.ts';
 import { OcService } from './services/oc.ts';
 import { ConfigService } from './services/config.ts';
+import { ServerManager } from './lib/utils/ServerManager.ts';
 import { logger } from './lib/utils/logger.ts';
 import { createOpencode } from '@opencode-ai/sdk';
 import { validateProviderAndModel, withTempOpenCodeClient } from './lib/utils/validation.ts';
@@ -10,10 +11,16 @@ import { StartupValidationError } from './lib/errors.ts';
 const hasNoArgs = process.argv.length <= 2;
 
 let oc: OcService | null = null;
+let serverManagerInstance: ServerManager | null = null;
 
 const shutdown = async (signal: string, exitCode: number = 0): Promise<void> => {
   try {
     await logger.info(`Received ${signal}, shutting down gracefully...`);
+
+    // Close all servers managed by ServerManager
+    if (serverManagerInstance) {
+      await serverManagerInstance.closeAll();
+    }
 
     await logger.info('Shutdown complete');
   } catch (error) {
@@ -52,8 +59,9 @@ async function main(): Promise<void> {
       await logger.warn('Continuing with invalid configuration due to fail-open policy');
     }
 
-    // Initialize OcService
-    oc = new OcService(config);
+    // Initialize ServerManager and OcService
+    serverManagerInstance = new ServerManager();
+    oc = new OcService(config, serverManagerInstance);
 
     // Setup graceful shutdown handlers
     setupGracefulShutdown();
