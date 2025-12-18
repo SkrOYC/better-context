@@ -15,7 +15,9 @@ export const directoryExists = async (dir: string): Promise<boolean> => {
     const stat = await fs.stat(dir);
     return stat.isDirectory();
   } catch (error) {
-    if ((error as any).code === 'ENOENT') return false;
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      return false;
+    }
     throw new ConfigError('Failed to check directory', error);
   }
 };

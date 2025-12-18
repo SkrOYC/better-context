@@ -1,8 +1,8 @@
-import type { Event } from '@opencode-ai/sdk';
+import type { Event, ToolState, ToolStateCompleted, ToolStateError } from '@opencode-ai/sdk';
 import type { EventHandler } from '../EventProcessor.ts';
 import type { Event as SdkEvent } from '@opencode-ai/sdk';
 import type { ToolPartUpdatedEvent, ToolPart } from '../../types/events.ts';
-import { isToolEvent } from '../../utils/type-guards.ts';
+import { isToolEvent, getToolOutput, getToolError, isToolStateCompleted, isToolStateError } from '../../utils/type-guards.ts';
 import { logger } from '../../utils/logger.ts';
 
 export interface ToolEventHandlerOptions {
@@ -44,18 +44,28 @@ export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
         // Handle tool completion and error states
         if (this.options.enableVisibility) {
           if (toolPart.state.status === 'completed') {
-            const output = (toolPart.state as any).output || '';
+            const output = getToolOutput(toolPart);
             this.writeToOutput(`✅ Tool completed: ${toolPart.tool}\n`);
             if (output && output.trim()) {
               this.writeToOutput(`${output}\n`);
             }
           } else if (toolPart.state.status === 'error') {
-            const error = (toolPart.state as any).error || 'Unknown error';
+            const error = getToolError(toolPart);
             this.writeToOutput(`❌ Tool error: ${toolPart.tool} - ${error}\n`);
           }
         }
 
-       const metadata = {
+       // Define properly typed metadata object
+       const metadata: {
+         callID: string;
+         sessionID: string;
+         messageID: string;
+         tool: string;
+         status: string;
+         input?: { [key: string]: unknown };
+         output?: string;
+         error?: string;
+       } = {
          callID: toolPart.callID,
          sessionID: toolPart.sessionID,
          messageID: toolPart.messageID,
@@ -72,17 +82,17 @@ export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
            input = this.redactSensitiveData(input);
          }
 
-         (metadata as any).input = input;
+         metadata.input = input;
        }
 
-       // Include output for completed tools
-       if (toolPart.state.status === 'completed' && (toolPart.state as any).output) {
-         (metadata as any).output = (toolPart.state as any).output;
+       // Include output for completed tools using discriminated union type guard
+       if (isToolStateCompleted(toolPart.state)) {
+         metadata.output = toolPart.state.output;
        }
 
-       // Include error for failed tools
-       if (toolPart.state.status === 'error' && (toolPart.state as any).error) {
-         (metadata as any).error = (toolPart.state as any).error;
+       // Include error for failed tools using discriminated union type guard
+       if (isToolStateError(toolPart.state)) {
+         metadata.error = toolPart.state.error;
        }
 
        const message = `Tool ${toolPart.state.status}: ${toolPart.tool}`;

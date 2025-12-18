@@ -51,8 +51,11 @@ export class SessionStatusEventHandler implements EventHandler<SessionStatusEven
             statusMessage += ` (next retry at ${nextRetry})`;
           }
           break;
-        default:
-          statusMessage = `❓ Unknown status: ${(statusInfo as any).type}`;
+        default: {
+          // Exhaustiveness check - TypeScript will error if a new status type is added to the union
+          const _exhaustive: never = statusInfo;
+          statusMessage = `❓ Unknown status: ${String((_exhaustive as any).type)}`;
+        }
       }
 
       if (sessionID) {

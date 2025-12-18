@@ -18,7 +18,7 @@ import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.t
 import { SessionStatusEventHandler } from '../lib/event/handlers/SessionStatusEventHandler.ts';
 import { ServerHeartbeatEventHandler } from '../lib/event/handlers/ServerHeartbeatEventHandler.ts';
 import { ToolEventHandler } from '../lib/event/handlers/ToolEventHandler.ts';
-import { hasSessionId, isSessionIdleEvent, isSessionErrorEvent } from '../lib/utils/type-guards.ts';
+import { hasSessionId, isSessionIdleEvent, isSessionErrorEvent, isMessageUpdatedEvent } from '../lib/utils/type-guards.ts';
 import type { SdkEvent } from '../lib/types/events.ts';
 
 export type { Event as OcEvent };
@@ -248,8 +248,8 @@ export class OcService {
                 }
 
                 // Log message.updated events for debugging
-                if ((event as any).type === 'message.updated') {
-                  const messageID = (event.properties as any)?.messageID;
+                if (isMessageUpdatedEvent(event)) {
+                  const messageID = event.properties.info.id;
                   logger.debug(`Received message.updated for messageID: ${messageID}`);
                 }
 

@@ -1,4 +1,4 @@
-import type { Event } from '@opencode-ai/sdk';
+import type { Event, Part, TextPart, ToolPart, ToolState, ToolStateCompleted, ToolStateError } from '@opencode-ai/sdk';
 import type {
   MessagePartUpdatedEvent,
   MessageUpdatedEvent,
@@ -7,7 +7,6 @@ import type {
   SessionStatusEvent,
   ServerConnectedEvent,
   ToolPartUpdatedEvent,
-  ToolPart,
   EventWithSessionId,
   MessageEventProperties,
   MessageUpdatedProperties,
@@ -145,4 +144,63 @@ export function isValidSessionResponse(response: unknown): response is { data: {
          response.data !== null &&
          'id' in response.data &&
          typeof response.data.id === 'string';
+}
+// ============================================================================
+// Discriminated Union Type Guards for ToolState
+// ============================================================================
+
+/**
+ * Type guard to check if ToolState is in 'completed' status
+ * Enables safe access to ToolStateCompleted.output property
+ */
+export function isToolStateCompleted(state: ToolState): state is ToolStateCompleted {
+  return state.status === 'completed';
+}
+
+/**
+ * Type guard to check if ToolState is in 'error' status
+ * Enables safe access to ToolStateError.error property
+ */
+export function isToolStateError(state: ToolState): state is ToolStateError {
+  return state.status === 'error';
+}
+
+// ============================================================================
+// Safe Property Access Helpers
+// ============================================================================
+
+/**
+ * Safely get delta from MessagePartUpdatedEvent
+ * Note: delta is at event.properties level, NOT on the part itself
+ */
+export function getEventDelta(event: MessagePartUpdatedEvent): string {
+  return event.properties.delta ?? '';
+}
+
+/**
+ * Safely get text from a Part if it's a TextPart
+ */
+export function getTextPartText(part: Part): string {
+  return part.type === 'text' ? part.text : '';
+}
+
+/**
+ * Safely get tool output from ToolPart (only available when status is 'completed')
+ */
+export function getToolOutput(toolPart: ToolPart): string {
+  return isToolStateCompleted(toolPart.state) ? toolPart.state.output : '';
+}
+
+/**
+ * Safely get tool error from ToolPart (only available when status is 'error')
+ */
+export function getToolError(toolPart: ToolPart): string {
+  return isToolStateError(toolPart.state) ? toolPart.state.error : '';
+}
+
+/**
+ * Type guard to check if a Part is a TextPart
+ */
+export function isTextPart(part: Part): part is TextPart {
+  return part.type === 'text';
 }
