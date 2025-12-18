@@ -16,7 +16,6 @@ import { MessageEventHandler } from '../lib/event/handlers/MessageEventHandler.t
 import { MessageUpdatedEventHandler } from '../lib/event/handlers/MessageUpdatedEventHandler.ts';
 import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.ts';
 import { SessionStatusEventHandler } from '../lib/event/handlers/SessionStatusEventHandler.ts';
-import { PermissionUpdatedEventHandler } from '../lib/event/handlers/PermissionUpdatedEventHandler.ts';
 import { ServerHeartbeatEventHandler } from '../lib/event/handlers/ServerHeartbeatEventHandler.ts';
 import { ToolEventHandler } from '../lib/event/handlers/ToolEventHandler.ts';
 import { hasSessionId, isSessionIdleEvent, isSessionErrorEvent } from '../lib/utils/type-guards.ts';
@@ -248,22 +247,6 @@ export class OcService {
                   throw new OcError(errorMsg, errorProps.error);
                 }
 
-                // Auto-approve permission requests
-                if ((event as any).type === 'permission.request' && hasSessionId(event) && event.properties.sessionID === sessionID) {
-                  const permissionId = (event.properties as any).permissionID;
-                  if (permissionId) {
-                    try {
-                      await (result.client as any).permission.respond({
-                        path: { sessionID, permissionID: permissionId },
-                        body: { response: 'always' }
-                      });
-                      await logger.info(`Auto-approved permission ${permissionId} for session ${sessionID}`);
-                    } catch (error) {
-                      await logger.warn(`Failed to approve permission ${permissionId}: ${error}`);
-                    }
-                  }
-                }
-
                 // Log message.updated events for debugging
                 if ((event as any).type === 'message.updated') {
                   const messageID = (event.properties as any)?.messageID;
@@ -278,6 +261,7 @@ export class OcService {
           }
         };
 
+
         // Create event handlers for processing
         const messageHandler = new MessageEventHandler({
           outputStream: process.stdout,
@@ -288,10 +272,6 @@ export class OcService {
           enableFormatting: true,
         });
         const sessionStatusHandler = new SessionStatusEventHandler({
-          enableStatusLogging: true,
-          outputStream: process.stdout,
-        });
-        const permissionUpdatedHandler = new PermissionUpdatedEventHandler({
           enableStatusLogging: true,
           outputStream: process.stdout,
         });
@@ -315,7 +295,6 @@ export class OcService {
         processor.registerHandler('message-handler', messageHandler);
         processor.registerHandler('message-updated-handler', messageUpdatedHandler);
         processor.registerHandler('session-status-handler', sessionStatusHandler);
-        processor.registerHandler('permission-updated-handler', permissionUpdatedHandler);
         processor.registerHandler('server-heartbeat-handler', serverHeartbeatHandler);
         processor.registerHandler('session-handler', sessionHandler);
         processor.registerHandler('tool-handler', toolHandler);
