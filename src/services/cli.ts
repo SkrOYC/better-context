@@ -856,16 +856,13 @@ EXAMPLES:
             console.log();
             const { connected, all } = response.data;
 
-            // Debug: Show what's in connected array
-            await logger.debug(`Connected providers: ${JSON.stringify(connected)}`);
-
             // all is an array of providers
             if (Array.isArray(all)) {
               all.forEach((provider: any, index: number) => {
                 // Check if provider.id is in the connected array
-                const isConnected = connected.includes(provider.id) || connected.includes(String(index));
+                const isConnected = connected.includes(provider.id);
                 const status = isConnected ? '✓ Authenticated' : '✗ Not authenticated';
-                console.log(`  [${index}] ${provider.name || 'Unknown'}: ${status}`);
+                console.log(`  [${index}] ${provider.name || 'Unknown'} (${provider.id}): ${status}`);
               });
 
               if (connected.length === 0) {
