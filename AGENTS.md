@@ -55,42 +55,85 @@ Available <tech>: svelte, tailwindcss, opentui, runed
 
 ## Architecture
 
-### Project Structure
-- `src/`: Core CLI app (TypeScript + Bun), handles btca commands via services (ConfigService for settings, OcService for OpenCode SDK integration, ValidationService for config checks).
-- `src/services/`: Main business logic layer with CLI, OpenCode SDK integration, and configuration management.
-- `src/lib/event/`: Event-driven processing system with handlers, processors, and stream management.
-- `src/lib/utils/`: Utility functions for file operations, fuzzy matching, git operations, logging, and type guards.
-- `src/lib/types/`: TypeScript type definitions for SDK events and responses.
-- `tests/`: Comprehensive test suite covering basic functionality, config validation, error handling, event processing, performance, resource cleanup, and type safety.
+### High-Level Architecture
+btca is an **event-driven CLI** that integrates with the OpenCode SDK to provide AI-powered code analysis. The system is designed around **resource pooling** and **efficient session management**.
 
-### Data Flow for btca Commands
-1. CLI validates tech/repo, checks response cache (10-min TTL).
-2. Lazily clones/updates GitHub repos locally (30-min cache).
-3. Reuses pooled OpenCode sessions (15-min window) or creates new ones.
-4. Streams AI responses through event-driven pipeline (EventProcessor with backpressure, 1000 events/sec rate limit).
-5. Outputs via MessageEventHandler; caches responses.
+### Core Components
+- **CLI Service** (`src/services/cli.ts`): Entry point and command routing
+- **ConfigService** (`src/services/config.ts`): Configuration and repository management
+- **OcService** (`src/services/oc.ts`): OpenCode SDK integration and session management
+- **Event System** (`src/lib/event/`): Event-driven processing pipeline with typed handlers
 
-### Key Patterns
-- **Event-Driven**: Streaming with handlers (MessageEventHandler for output, SessionEventHandler for lifecycle, ToolEventHandler for tool calls).
-- **Resource Pooling**: Sessions/instances pooled with timeouts; async queuing for limits (max 50 queued requests, 30-sec timeout).
-- **Session Coordination**: Manages concurrent sessions per tech (max 5) and total sessions (max 20) with automatic cleanup.
-- **Caching**: Multi-level (responses: 10-min TTL, repos: 30-min, validation: 5-min) with auto-cleanup and metrics.
-- **Type Safety**: Extensive guards for SDK events; fail-open for network issues.
-- **Retry Logic**: Exponential backoff for transient failures (network, timeouts, port exhaustion).
+### Data Flow Architecture
+1. **CLI Layer**: Validates input, delegates to OcService
+2. **OcService Layer**: Manages OpenCode instances, creates sessions, streams events
+3. **Event Processing Layer**: Routes events through typed handlers, handles AI responses and tool calls
+4. **Handler Layer**: Specialized handlers for different event types (messages, tools, sessions, permissions)
 
-### Performance Features
-- Session reuse with directory validation to ensure correct repo context.
-- Parallel event handling (up to 20 concurrent handlers, 1000 events/sec rate limit).
-- Response caching with hit rate metrics and automatic cleanup.
-- Repository smart updates to avoid unnecessary git operations.
-- Resource pool queuing with graceful degradation under load.
-- Comprehensive metrics for cache hit rates, pool utilization, session counts, and event processing throughput.
+### Key Architectural Patterns
+- **Event-Driven Architecture**: All communication happens through typed event handlers
+- **Resource Pooling**: OpenCode instances and sessions are pooled for efficiency
+- **Multi-Level Caching**: Responses, repositories, and validation with different TTLs
+- **Graceful Degradation**: Queue-based resource management under load
 
-### Session Management
-- **Session Pool**: Reuses active sessions within 15-minute windows for same-tech queries.
-- **Resource Pool**: Pools OpenCode instances with configurable limits (3 per tech, 10 total, 30-min timeout).
-- **Session Coordinator**: Coordinates session lifecycle, enforces limits, and handles cleanup.
-- **Automatic Cleanup**: Stale sessions, orphaned processes, and expired cache entries are cleaned up automatically.
+### Session Management System
+btca implements sophisticated session management to optimize performance:
+
+- **Session Pool**: 15-minute reuse windows for same-tech queries
+- **Resource Pool**: OpenCode instance pooling (3 per tech, 10 total, 30-min timeout)
+- **Session Coordinator**: Lifecycle management, limit enforcement, automatic cleanup
+- **Queue System**: Graceful handling of concurrent request limits (max 50 queued)
+
+### Event Processing Pipeline
+The event system handles multiple event types through specialized handlers:
+
+- **Message Events**: AI responses and streaming content
+- **Tool Events**: Tool execution, completion, and errors
+- **Session Events**: Lifecycle, status changes, errors
+- **Permission Events**: Permission requests and approvals
+- **Server Events**: Connection health and heartbeats
+
+## Configuration Management
+
+### Configuration File
+- **Location**: `~/.config/btca/btca.json`
+- **Content**: Repository list, model/provider settings, performance options
+- **Validation**: Startup validation with fail-open for network issues
+
+### Configuration Commands
+```bash
+# View current model
+btca config model
+
+# Update provider/model
+btca config model --provider openai --model gpt-4
+
+# Manage repositories
+btca config repos list
+btca config repos add --name react --url https://github.com/facebook/react
+btca config repos remove --name react
+btca config repos clear
+```
+
+### Repository Management
+- **Smart Caching**: 15-minute validation cache, 30-minute repository cache
+- **Lazy Operations**: Repositories cloned/updated only when needed
+- **Conflict Resolution**: Automatic port allocation with retry logic
+- **Git Integration**: Proper repository state management
+
+## Performance and Reliability
+
+### Multi-Level Caching System
+- **Response Cache**: 10-minute TTL for identical questions
+- **Repository Cache**: 30-minute TTL for cloned repositories
+- **Validation Cache**: 5-minute TTL for configuration validation
+
+### Error Handling Strategy
+- **Typed Exceptions**: Custom error classes in `src/lib/errors.ts`
+- **Specific Recovery**: Different strategies for different error types
+- **Fail-Open Policy**: Network issues don't prevent startup
+- **Exponential Backoff**: Retry logic for transient failures
+- **Graceful Shutdown**: Cleanup of all resources on exit
 
 ## Install
 
