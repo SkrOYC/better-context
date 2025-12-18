@@ -9,6 +9,8 @@ export interface ToolEventHandlerOptions {
   logLevel?: 'info' | 'debug' | 'tool';
   includeInputs?: boolean;
   redactSensitive?: boolean;
+  outputStream?: NodeJS.WritableStream;
+  enableVisibility?: boolean;
 }
 
 export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
@@ -19,6 +21,8 @@ export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
       logLevel: options.logLevel ?? 'tool',
       includeInputs: options.includeInputs ?? true,
       redactSensitive: options.redactSensitive ?? true,
+      outputStream: options.outputStream ?? process.stdout,
+      enableVisibility: options.enableVisibility ?? true,
     };
   }
 
@@ -30,45 +34,72 @@ export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
     try {
       const toolPart = event.properties.part as ToolPart;
 
-      // Only log when tool starts running (not pending/completed/error)
-      if (toolPart.state.status !== 'running') {
-        return;
-      }
+       // Log tool state changes for debugging
 
-      const metadata = {
-        callID: toolPart.callID,
-        sessionID: toolPart.sessionID,
-        messageID: toolPart.messageID,
-        tool: toolPart.tool,
-      };
-
-      // Include input parameters if enabled
-      if (this.options.includeInputs && toolPart.state.input) {
-        let input = toolPart.state.input;
-
-        // Redact sensitive information if enabled
-        if (this.options.redactSensitive) {
-          input = this.redactSensitiveData(input);
+       // Output visibility to user if enabled and tool is starting
+        if (this.options.enableVisibility && toolPart.state.status === 'running') {
+          this.writeToOutput(`🔧 Using tool: ${toolPart.tool}\n`);
         }
 
-        (metadata as any).input = input;
-      }
+        // Handle tool completion and error states
+        if (this.options.enableVisibility) {
+          if (toolPart.state.status === 'completed') {
+            const output = (toolPart.state as any).output || '';
+            this.writeToOutput(`✅ Tool completed: ${toolPart.tool}\n`);
+            if (output && output.trim()) {
+              this.writeToOutput(`${output}\n`);
+            }
+          } else if (toolPart.state.status === 'error') {
+            const error = (toolPart.state as any).error || 'Unknown error';
+            this.writeToOutput(`❌ Tool error: ${toolPart.tool} - ${error}\n`);
+          }
+        }
 
-      const message = `Tool called: ${toolPart.tool}`;
+       const metadata = {
+         callID: toolPart.callID,
+         sessionID: toolPart.sessionID,
+         messageID: toolPart.messageID,
+         tool: toolPart.tool,
+         status: toolPart.state.status,
+       };
 
-      // Log based on configured level
-      switch (this.options.logLevel) {
-        case 'debug':
-          await logger.debug(`${message} ${JSON.stringify(metadata)}`);
-          break;
-        case 'info':
-          await logger.info(`${message} ${JSON.stringify(metadata)}`);
-          break;
-        case 'tool':
-        default:
-          await logger.tool(message, metadata);
-          break;
-      }
+       // Include input parameters if enabled
+       if (this.options.includeInputs && toolPart.state.input) {
+         let input = toolPart.state.input;
+
+         // Redact sensitive information if enabled
+         if (this.options.redactSensitive) {
+           input = this.redactSensitiveData(input);
+         }
+
+         (metadata as any).input = input;
+       }
+
+       // Include output for completed tools
+       if (toolPart.state.status === 'completed' && (toolPart.state as any).output) {
+         (metadata as any).output = (toolPart.state as any).output;
+       }
+
+       // Include error for failed tools
+       if (toolPart.state.status === 'error' && (toolPart.state as any).error) {
+         (metadata as any).error = (toolPart.state as any).error;
+       }
+
+       const message = `Tool ${toolPart.state.status}: ${toolPart.tool}`;
+
+       // Log based on configured level
+       switch (this.options.logLevel) {
+         case 'debug':
+           await logger.debug(`${message} ${JSON.stringify(metadata)}`);
+           break;
+         case 'info':
+           await logger.info(`${message} ${JSON.stringify(metadata)}`);
+           break;
+         case 'tool':
+         default:
+           await logger.tool(message, metadata);
+           break;
+       }
 
     } catch (error) {
       await logger.error(`Error handling tool event: ${error}`);
@@ -91,5 +122,17 @@ export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
     }
 
     return redacted;
+  }
+
+  private writeToOutput(text: string): void {
+    if (!text) return;
+
+    try {
+      this.options.outputStream.write(text);
+    } catch (error) {
+      logger.error(`Error writing to output stream: ${error}`);
+      // Fallback to console if output stream fails
+      console.log(text);
+    }
   }
 }

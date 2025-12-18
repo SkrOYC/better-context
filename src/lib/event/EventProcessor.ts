@@ -60,6 +60,29 @@ export class EventProcessor {
 
     if (applicableHandlers.length === 0) {
       logger.debug(`No handlers found for event type: ${event.type}`);
+
+      // Add detailed logging for message.updated events
+      if (event.type === 'message.updated') {
+        const props = event.properties as any;
+        const messageInfo = props?.info;
+        const details = {
+          sessionID: messageInfo?.sessionID,
+          messageID: messageInfo?.id,
+          hasText: !!messageInfo?.text,
+          textLength: messageInfo?.text?.length || 0,
+          hasParts: !!messageInfo?.parts,
+          partsCount: messageInfo?.parts?.length || 0,
+          role: messageInfo?.role
+        };
+        logger.debug(`Unhandled message.updated details: ${JSON.stringify(details)}`);
+
+        // Log first 10 chars of text if available
+        if (messageInfo?.text) {
+          const preview = messageInfo.text.substring(0, 10);
+          logger.debug(`Message text preview: "${preview}${messageInfo.text.length > 10 ? '...' : ''}"`);
+        }
+      }
+
       return;
     }
 

@@ -578,22 +578,16 @@ EXAMPLES:
 
   private async handleAskCommand(question: string, tech: string): Promise<void> {
     const timeoutId = setTimeout(() => {
-      console.error('\nCommand timed out after 10 minutes. The model may not be responding or the provider may not be configured correctly.');
+      console.error('\nCommand timed out after 5 minutes. The model may not be responding or the provider may not be configured correctly.');
       console.error('Check your configuration with "btca config model" and "btca auth status".');
       process.exit(1);
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5 minutes total (includes 2 min processing + buffer)
 
     try {
       await logger.info(`CLI: Executing ask command for ${tech} with question: "${question}"`);
-      const eventStream = await this.oc.askQuestion({ tech, question });
-
-      // Event processing is now handled internally by the OcService through registered handlers
-      // The MessageEventHandler writes directly to stdout, so we just need to consume the stream
-      // to ensure all events are processed
-      for await (const event of eventStream) {
-        // Events are processed by the registered handlers in the background
-        // No manual processing needed here anymore
-      }
+       // Event processing is handled internally by the OcService
+       // The MessageEventHandler writes directly to stdout
+       await this.oc.askQuestion({ tech, question });
 
       clearTimeout(timeoutId);
 

@@ -11,6 +11,7 @@ export interface MessageEventHandlerOptions {
 
 export class MessageEventHandler implements EventHandler<MessagePartUpdatedEvent> {
   private options: Required<MessageEventHandlerOptions>;
+  private outputtedMessages = new Set<string>();
 
   constructor(options: MessageEventHandlerOptions = {}) {
     this.options = {
@@ -33,19 +34,20 @@ export class MessageEventHandler implements EventHandler<MessagePartUpdatedEvent
         return;
       }
 
-      const delta = (part as any).delta ?? '';
-      const fullText = (part as any).text;
+       const delta = (part as any).delta ?? '';
+       const fullText = (part as any).text;
+       const messageID = (part as any).messageID;
 
-      if (fullText) {
-        // Full text available
-        if (this.options.enableFormatting) {
-          this.writeToOutput('\n\n');
-        }
-        this.writeToOutput(fullText);
-      } else if (delta) {
-        // Incremental update
-        this.writeToOutput(delta);
-      }
+       // Output incremental deltas for streaming
+       if (delta) {
+         this.writeToOutput(delta);
+       }
+
+       // Output full text only once per message to prevent duplication
+       if (fullText && !this.outputtedMessages.has(messageID)) {
+         this.outputtedMessages.add(messageID);
+         this.writeToOutput(fullText);
+       }
 
     } catch (error) {
       logger.error(`Error handling message event: ${error}`);

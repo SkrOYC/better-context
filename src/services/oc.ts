@@ -13,9 +13,13 @@ import { logger } from '../lib/utils/logger.ts';
 import { EventProcessor } from '../lib/event/EventProcessor.ts';
 import { EventStreamManager } from '../lib/event/EventStreamManager.ts';
 import { MessageEventHandler } from '../lib/event/handlers/MessageEventHandler.ts';
+import { MessageUpdatedEventHandler } from '../lib/event/handlers/MessageUpdatedEventHandler.ts';
 import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.ts';
+import { SessionStatusEventHandler } from '../lib/event/handlers/SessionStatusEventHandler.ts';
+import { PermissionUpdatedEventHandler } from '../lib/event/handlers/PermissionUpdatedEventHandler.ts';
+import { ServerHeartbeatEventHandler } from '../lib/event/handlers/ServerHeartbeatEventHandler.ts';
 import { ToolEventHandler } from '../lib/event/handlers/ToolEventHandler.ts';
-import { hasSessionId, isSessionIdleEvent } from '../lib/utils/type-guards.ts';
+import { hasSessionId, isSessionIdleEvent, isSessionErrorEvent } from '../lib/utils/type-guards.ts';
 import type { SdkEvent } from '../lib/types/events.ts';
 
 export type { Event as OcEvent };
@@ -153,7 +157,7 @@ export class OcService {
     }
   }
 
-  async askQuestion(args: { question: string; tech: string }): Promise<AsyncIterable<Event>> {
+  async askQuestion(args: { question: string; tech: string }): Promise<void> {
     const { question, tech } = args;
     let result!: { client: OpencodeClient; server: { close: () => void; url: string } };
     let sessionID: string | null = null;
@@ -220,18 +224,45 @@ export class OcService {
               const sessionIdProp = hasSessionId(event) ? event.properties.sessionID : 'none';
               await logger.debug(`Received event ${eventCount} for session ${sessionID}: type=${event.type}, eventSessionID=${sessionIdProp}`);
 
-              if (sessionCompleted) {
-                break; // Stop yielding events after session completion
-              }
-
-              // Type-safe event filtering and session completion handling
+               // Type-safe event filtering and session completion handling
               if (!hasSessionId(event) || event.properties.sessionID === sessionID) {
-                // Handle session completion with type-safe idle event checking
+                // Handle session completion with type-safe event checking
                 if (isSessionIdleEvent(event) && event.properties.sessionID === sessionID) {
                   sessionCompleted = true;
                   await logger.info(`Session ${sessionID} completed for ${tech} after ${eventCount} events`);
                 }
 
+                if (isSessionErrorEvent(event) && event.properties.sessionID === sessionID) {
+                  sessionCompleted = true;
+                  const errorProps = event.properties as { error?: { message?: string } };
+                  const errorMsg = `Session ${sessionID} errored: ${errorProps.error?.message || 'Unknown error'}`;
+                  await logger.error(errorMsg);
+                  throw new OcError(errorMsg, errorProps.error);
+                }
+
+                // Auto-approve permission requests
+                if ((event as any).type === 'permission.request' && hasSessionId(event) && event.properties.sessionID === sessionID) {
+                  const permissionId = (event.properties as any).permissionID;
+                  if (permissionId) {
+                    try {
+                      await (result.client as any).permission.respond({
+                        path: { sessionID, permissionID: permissionId },
+                        body: { response: 'always' }
+                      });
+                      await logger.info(`Auto-approved permission ${permissionId} for session ${sessionID}`);
+                    } catch (error) {
+                      await logger.warn(`Failed to approve permission ${permissionId}: ${error}`);
+                    }
+                  }
+                }
+
+                // Log message.updated events for debugging
+                if ((event as any).type === 'message.updated') {
+                  const messageID = (event.properties as any)?.messageID;
+                  logger.debug(`Received message.updated for messageID: ${messageID}`);
+                }
+
+                await logger.debug(`[${eventCount}] Received ${event.type} for session ${sessionID}`);
                 yield event;
               }
             }
@@ -244,16 +275,42 @@ export class OcService {
           outputStream: process.stdout,
           enableFormatting: true,
         });
+        const messageUpdatedHandler = new MessageUpdatedEventHandler({
+          outputStream: process.stdout,
+          enableFormatting: true,
+        });
+        const sessionStatusHandler = new SessionStatusEventHandler({
+          enableStatusLogging: true,
+          outputStream: process.stdout,
+        });
+        const permissionUpdatedHandler = new PermissionUpdatedEventHandler({
+          enableStatusLogging: true,
+          outputStream: process.stdout,
+        });
+        const serverHeartbeatHandler = new ServerHeartbeatEventHandler({
+          enableHeartbeatLogging: false, // Keep disabled by default to reduce noise
+          heartbeatInterval: 50, // Log every 50 heartbeats
+          outputStream: process.stdout,
+        });
         const sessionHandler = new SessionEventHandler({
           onSessionComplete: async (sessionId) => {
             await logger.info(`Session ${sessionId} completed`);
           }
         });
+        const toolHandler = new ToolEventHandler({
+          outputStream: process.stdout,
+          enableVisibility: true,
+        });
 
         // Create an event processor for this session
         const processor = new EventProcessor();
         processor.registerHandler('message-handler', messageHandler);
+        processor.registerHandler('message-updated-handler', messageUpdatedHandler);
+        processor.registerHandler('session-status-handler', sessionStatusHandler);
+        processor.registerHandler('permission-updated-handler', permissionUpdatedHandler);
+        processor.registerHandler('server-heartbeat-handler', serverHeartbeatHandler);
         processor.registerHandler('session-handler', sessionHandler);
+        processor.registerHandler('tool-handler', toolHandler);
 
         // Fire the prompt asynchronously (don't await - let it process in background)
         await logger.info(`Sending prompt to OpenCode for session ${sessionID} with provider ${this.configService.rawConfig().provider} and model ${this.configService.rawConfig().model}`);
@@ -273,20 +330,33 @@ export class OcService {
           throw promptError;
         });
 
-        // Return the processed events through our event processing system
-        const allEvents: Event[] = [];
-        const processedEvents = {
-          async *[Symbol.asyncIterator]() {
-            // Process each event through handlers and yield
-            for await (const event of sessionFilteredEvents) {
-              await processor.processEvent(event);
-              allEvents.push(event);
-              yield event;
-            }
-          }
-        };
+        // Process events through our event processing system with timeout
+        const timeoutMs = 2 * 60 * 1000; // 2 minutes
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new OcError(`Session timed out after 2 minutes of no events`));
+          }, timeoutMs);
+        });
 
-        return processedEvents;
+        try {
+          await Promise.race([
+            (async () => {
+              for await (const event of sessionFilteredEvents) {
+                await processor.processEvent(event);
+              }
+            })(),
+            timeoutPromise
+          ]);
+        } catch (error) {
+          // On timeout or session error, abort the session
+          try {
+            await result.client.session.abort({ path: { id: sessionID } });
+            await logger.info(`Aborted session ${sessionID} due to timeout or error`);
+          } catch (abortError) {
+            await logger.warn(`Failed to abort session ${sessionID}: ${abortError}`);
+          }
+          throw error; // Re-throw the original error
+        }
       } catch (error) {
         await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
         throw error;

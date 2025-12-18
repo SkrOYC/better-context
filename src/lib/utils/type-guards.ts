@@ -1,16 +1,21 @@
 import type { Event } from '@opencode-ai/sdk';
 import type {
   MessagePartUpdatedEvent,
+  MessageUpdatedEvent,
   SessionErrorEvent,
   SessionIdleEvent,
+  SessionStatusEvent,
   ServerConnectedEvent,
   ToolPartUpdatedEvent,
   ToolPart,
   EventWithSessionId,
   MessageEventProperties,
+  MessageUpdatedProperties,
   SessionErrorProperties,
   SessionIdleProperties,
-  ServerConnectedProperties
+  SessionStatusProperties,
+  ServerConnectedProperties,
+  PermissionRequestEvent
 } from '../types/events.ts';
 
 /**
@@ -41,6 +46,20 @@ export function isMessageEvent(event: Event): event is MessagePartUpdatedEvent {
          typeof props.part.type === 'string';
 }
 
+// Type guard for message updated events
+export function isMessageUpdatedEvent(event: Event): event is MessageUpdatedEvent {
+  if (!hasProperties(event) || event.type !== 'message.updated') {
+    return false;
+  }
+
+  const props = event.properties as Partial<MessageUpdatedProperties>;
+  return props.info !== undefined &&
+         typeof props.info === 'object' &&
+         props.info !== null &&
+         typeof props.info.id === 'string' &&
+         typeof props.info.role === 'string';
+}
+
 // Type guard for session error events
 export function isSessionErrorEvent(event: Event): event is SessionErrorEvent {
   if (!hasProperties(event) || event.type !== 'session.error') {
@@ -54,6 +73,19 @@ export function isSessionErrorEvent(event: Event): event is SessionErrorEvent {
 // Type guard for session idle events
 export function isSessionIdleEvent(event: Event): event is SessionIdleEvent {
   return hasProperties(event) && event.type === 'session.idle';
+}
+
+// Type guard for session status events
+export function isSessionStatusEvent(event: Event): event is SessionStatusEvent {
+  if (!hasProperties(event) || event.type !== 'session.status') {
+    return false;
+  }
+
+  const props = event.properties as Partial<SessionStatusProperties>;
+  return props.status !== undefined &&
+         typeof props.status === 'object' &&
+         props.status !== null &&
+         typeof props.status.type === 'string';
 }
 
 // Type guard for server connected events
@@ -101,6 +133,11 @@ export function isSdkError(error: unknown): error is { name?: string; message?: 
          (('name' in error && typeof error.name === 'string') ||
           ('message' in error && typeof error.message === 'string') ||
           ('code' in error && typeof error.code === 'string'));
+}
+
+// Type guard for permission request events
+export function isPermissionRequestEvent(event: Event): event is PermissionRequestEvent {
+  return hasProperties(event) && event.type === 'permission.updated';
 }
 
 // Type guard for session response validation
