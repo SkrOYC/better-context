@@ -789,11 +789,20 @@ EXAMPLES:
           if (response.data) {
             console.log('Available AI providers:');
             console.log();
-            for (const [id, provider] of Object.entries(response.data.all)) {
-              console.log(`  ${id}`);
-              console.log(`    Name: ${(provider as any).name}`);
-              console.log(`    Models: ${Object.keys((provider as any).models).join(', ')}`);
-              console.log();
+
+            // response.data.all is an array of providers
+            const providers = response.data.all;
+            if (Array.isArray(providers)) {
+              providers.forEach((provider: any, index: number) => {
+                console.log(`  [${index}] ${provider.name || 'Unknown'}`);
+                if (provider.models && typeof provider.models === 'object') {
+                  const modelList = Object.keys(provider.models).join(', ');
+                  console.log(`      Models: ${modelList}`);
+                }
+                console.log();
+              });
+            } else {
+              console.log('No providers available or unexpected provider format.');
             }
           } else {
             console.log('No providers available or unable to fetch provider list.');
@@ -847,15 +856,29 @@ EXAMPLES:
             console.log();
             const { connected, all } = response.data;
 
-            for (const providerId of Object.keys(all)) {
-              const status = connected.includes(providerId) ? 'Authenticated' : 'Not authenticated';
-              console.log(`  ${providerId}: ${status}`);
-            }
+            // Debug: Show what's in connected array
+            await logger.debug(`Connected providers: ${JSON.stringify(connected)}`);
 
-            if (connected.length === 0) {
-              console.log();
-              console.log('No providers are currently authenticated.');
-              console.log('Run "btca auth login --provider <provider>" to authenticate.');
+            // all is an array of providers
+            if (Array.isArray(all)) {
+              all.forEach((provider: any, index: number) => {
+                // Check if provider.id is in the connected array
+                const isConnected = connected.includes(provider.id) || connected.includes(String(index));
+                const status = isConnected ? '✓ Authenticated' : '✗ Not authenticated';
+                console.log(`  [${index}] ${provider.name || 'Unknown'}: ${status}`);
+              });
+
+              if (connected.length === 0) {
+                console.log();
+                console.log('No providers are currently authenticated.');
+                console.log('Run "opencode auth login --provider <provider-id>" to authenticate.');
+                console.log('(Use the provider ID from the list above, e.g., "opencode auth login --provider 6" for xAI)');
+              } else {
+                console.log();
+                console.log(`${connected.length} provider(s) authenticated.`);
+              }
+            } else {
+              console.log('Unable to parse provider list.');
             }
           } else {
             console.log('Unable to determine authentication status.');

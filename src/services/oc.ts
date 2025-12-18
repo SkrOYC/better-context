@@ -490,6 +490,7 @@ export class ResourcePool {
       process.env.OPENCODE_CONFIG_DIR = this.configService.getOpenCodeConfigDir();
 
       try {
+        await logger.info(`Creating OpenCode instance for ${tech} on port ${port} with config dir: ${this.configService.getOpenCodeConfigDir()}`);
         const result = await createOpencode({
           port,
           config: configObject
@@ -512,17 +513,9 @@ export class ResourcePool {
           delete process.env.OPENCODE_CONFIG_DIR;
         }
       }
-
-      return {
-        client: result.client,
-        server: result.server,
-        tech,
-        createdAt: new Date(),
-        lastUsed: new Date(),
-        inUse: true,
-        sessionCount: 1
-      };
     } catch (err) {
+      await logger.error(`Failed to create pooled OpenCode instance for ${tech} on port ${port}: ${err}`);
+      await logger.error(`Error details: ${err instanceof Error ? err.stack : String(err)}`);
       throw new OcError('FAILED TO CREATE POOLED OPENCODE INSTANCE', err);
     }
   }
@@ -1035,43 +1028,54 @@ export class OcService {
     const portRange = this.configService.getOpenCodePortRange();
     const processesToClean: number[] = [];
 
+    await logger.info(`Checking for orphaned OpenCode processes on ports ${basePort} to ${basePort + portRange - 1}`);
+
     // Check for OpenCode processes on configured port range
     for (let port = basePort; port < basePort + portRange; port++) {
       try {
         // Use lsof to find processes using the port
-        const { stdout } = await Bun.spawn(['lsof', '-ti', `:${port}`], {
+        const proc = Bun.spawn(['lsof', '-ti', `:${port}`], {
           stdout: 'pipe',
-          stderr: 'ignore'
+          stderr: 'pipe'
         });
 
-        if (stdout) {
-          const output = await new Response(stdout).text();
-          const pid = parseInt(output.trim());
-          if (!isNaN(pid)) {
-            // Check if it's an OpenCode process
-            const cmdResult = await Bun.spawn(['ps', '-p', pid.toString(), '-o', 'comm='], {
-              stdout: 'pipe',
-              stderr: 'ignore'
-            });
+        const output = await new Response(proc.stdout).text();
+        await proc.exited;
 
-            const command = cmdResult?.stdout ? (await new Response(cmdResult.stdout).text()).trim() : '';
-            if (command.includes('node') || command.includes('bun') || command.includes('opencode')) {
-              processesToClean.push(pid);
-            }
+        const pid = parseInt(output.trim());
+        if (!isNaN(pid)) {
+          await logger.debug(`Found process ${pid} on port ${port}, checking if it's an OpenCode process`);
+
+          // Check if it's an OpenCode process
+          const cmdProc = Bun.spawn(['ps', '-p', pid.toString(), '-o', 'comm='], {
+            stdout: 'pipe',
+            stderr: 'pipe'
+          });
+
+          const command = (await new Response(cmdProc.stdout).text()).trim();
+          await cmdProc.exited;
+
+          await logger.debug(`Process ${pid} on port ${port} has command: ${command}`);
+
+          if (command.includes('node') || command.includes('bun') || command.includes('opencode')) {
+            processesToClean.push(pid);
+            await logger.info(`Identified orphaned OpenCode process ${pid} on port ${port}`);
           }
         }
       } catch (error) {
         // Port is likely not in use, which is fine
+        await logger.debug(`Port ${port} check failed (likely not in use): ${error}`);
       }
     }
 
     // Clean up orphaned processes
     for (const pid of processesToClean) {
       try {
-        await Bun.spawn(['kill', pid.toString()], {
-          stdout: 'ignore',
-          stderr: 'ignore'
+        const killProc = Bun.spawn(['kill', pid.toString()], {
+          stdout: 'pipe',
+          stderr: 'pipe'
         });
+        await killProc.exited;
         await logger.resource(`Cleaned up orphaned OpenCode process ${pid}`);
         this.metrics.orphanedProcessesCleaned++;
       } catch (error) {
@@ -1082,6 +1086,8 @@ export class OcService {
     if (processesToClean.length > 0) {
       await logger.resource(`Cleaned up ${processesToClean.length} orphaned processes`);
       await logger.metrics(`Orphaned processes cleaned: ${this.metrics.orphanedProcessesCleaned}`);
+    } else {
+      await logger.info('No orphaned OpenCode processes found');
     }
   }
 
@@ -1211,7 +1217,13 @@ export class OcService {
         const sessionFilteredEvents = {
           async *[Symbol.asyncIterator]() {
             let sessionCompleted = false;
+            let eventCount = 0;
             for await (const event of events.stream) {
+              eventCount++;
+              if (eventCount === 1 || eventCount % 10 === 0) {
+                await logger.debug(`Received event ${eventCount} for session ${sessionID}: type=${event.type}`);
+              }
+
               if (sessionCompleted) {
                 break; // Stop yielding events after session completion
               }
@@ -1221,7 +1233,7 @@ export class OcService {
                 // Handle session completion with type-safe idle event checking
                 if (isSessionIdleEvent(event) && event.properties.sessionID === sessionID) {
                   sessionCompleted = true;
-                  await logger.info(`Session ${sessionID} completed for ${tech}`);
+                  await logger.info(`Session ${sessionID} completed for ${tech} after ${eventCount} events`);
                   // Mark session as inactive in pool and release instance back to pool
                   self.sessionPool.markSessionInactive(sessionID);
                   self.resourcePool.releaseInstance(tech, result!.client);
@@ -1231,6 +1243,7 @@ export class OcService {
                 yield event;
               }
             }
+            await logger.info(`Event stream finished for session ${sessionID} with ${eventCount} total events`);
           }
         };
 
@@ -1245,6 +1258,7 @@ export class OcService {
         );
 
         // Fire the prompt asynchronously
+        await logger.info(`Sending prompt to OpenCode for session ${sessionID} with provider ${this.configService.rawConfig().provider} and model ${this.configService.rawConfig().model}`);
         result.client.session.prompt({
           path: { id: sessionID },
           body: {
@@ -1258,6 +1272,7 @@ export class OcService {
         }).catch(async (err) => {
           const promptError = new OcError(String(err), err);
           await logger.error(`Prompt error for ${tech} (session ${sessionID}): ${err}`);
+          await logger.error(`Prompt error stack: ${err instanceof Error ? err.stack : String(err)}`);
 
           // Stop the stream on prompt error
           if (streamId) {
