@@ -59,21 +59,7 @@ export class Logger {
     }
   }
 
-  async resource(message: string): Promise<void> {
-    await this.log('INFO', `[RESOURCE] ${message}`);
-  }
 
-  async metrics(message: string): Promise<void> {
-    await this.log('INFO', `[METRICS] ${message}`);
-  }
-
-  async tool(message: string, metadata?: object): Promise<void> {
-    let logMessage = `[TOOL] ${message}`;
-    if (metadata) {
-      logMessage += `\n${JSON.stringify(metadata, null, 2)}`;
-    }
-    await this.log('INFO', logMessage);
-  }
 }
 
 // Create a singleton instance for the application

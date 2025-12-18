@@ -5,12 +5,10 @@ import { logger } from '../utils/logger.ts';
 export interface EventHandler<T extends SdkEvent = SdkEvent> {
   canHandle(event: SdkEvent): event is T;
   handle(event: T): Promise<void> | void;
-  priority?: number; // Lower number = higher priority
 }
 
 export class EventProcessor {
   private handlers = new Map<string, EventHandler>();
-  private sortedHandlers: Array<{ name: string; handler: EventHandler; priority: number }> = [];
 
   constructor() {
   }
@@ -20,7 +18,6 @@ export class EventProcessor {
    */
   registerHandler(name: string, handler: EventHandler): void {
     this.handlers.set(name, handler);
-    this.updateSortedHandlers();
     logger.debug(`Event handler registered: ${name}`);
   }
 
@@ -29,7 +26,6 @@ export class EventProcessor {
    */
   unregisterHandler(name: string): void {
     this.handlers.delete(name);
-    this.updateSortedHandlers();
     logger.debug(`Event handler unregistered: ${name}`);
   }
 
@@ -56,7 +52,13 @@ export class EventProcessor {
    * Process a single event by calling all applicable handlers
    */
   async processEvent(event: SdkEvent): Promise<void> {
-    const applicableHandlers = this.sortedHandlers.filter(({ handler }) => handler.canHandle(event));
+    const applicableHandlers: Array<{ name: string; handler: EventHandler }> = [];
+    
+    for (const [name, handler] of this.handlers.entries()) {
+      if (handler.canHandle(event)) {
+        applicableHandlers.push({ name, handler });
+      }
+    }
 
     if (applicableHandlers.length === 0) {
       logger.debug(`No handlers found for event type: ${event.type}`);
@@ -86,7 +88,7 @@ export class EventProcessor {
       return;
     }
 
-    // Call handlers in priority order
+    // Call handlers in the order they were registered
     for (const { name, handler } of applicableHandlers) {
       try {
         await handler.handle(event as any);
@@ -95,19 +97,6 @@ export class EventProcessor {
         // Continue with other handlers
       }
     }
-  }
-
-  /**
-   * Update the sorted handlers list based on priority
-   */
-  private updateSortedHandlers(): void {
-    this.sortedHandlers = Array.from(this.handlers.entries())
-      .map(([name, handler]) => ({
-        name,
-        handler,
-        priority: handler.priority ?? 0,
-      }))
-      .sort((a, b) => a.priority - b.priority);
   }
 
   /**
