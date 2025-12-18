@@ -11,7 +11,6 @@ import { OcError, InvalidTechError } from '../lib/errors.ts';
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
 import { logger } from '../lib/utils/logger.ts';
 import { EventProcessor } from '../lib/event/EventProcessor.ts';
-import { EventStreamManager } from '../lib/event/EventStreamManager.ts';
 import { MessageEventHandler } from '../lib/event/handlers/MessageEventHandler.ts';
 import { MessageUpdatedEventHandler } from '../lib/event/handlers/MessageUpdatedEventHandler.ts';
 import { SessionEventHandler } from '../lib/event/handlers/SessionEventHandler.ts';
@@ -50,7 +49,6 @@ export type { Event as OcEvent };
 export class OcService {
   private configService: ConfigService;
   private eventProcessor: EventProcessor;
-  private eventStreamManager: EventStreamManager;
 
 
 
@@ -59,8 +57,6 @@ export class OcService {
 
     // Initialize event processing system
     this.eventProcessor = new EventProcessor();
-
-    this.eventStreamManager = new EventStreamManager();
 
     // Register default event handlers
     this.registerDefaultEventHandlers();
@@ -88,17 +84,12 @@ export class OcService {
 
 
 
-  getMetrics() {
-    return {
-      repositoryCache: this.configService.getRepositoryCacheStats()
-    };
-  }
+
 
   async shutdown(): Promise<void> {
     try {
-      await this.eventStreamManager.shutdown();
       await this.eventProcessor.shutdown();
-      await logger.resource('OcService shutdown complete');
+      await logger.info('OcService shutdown complete');
     } catch (error) {
       await logger.error(`Error during OcService shutdown: ${error}`);
       throw error;

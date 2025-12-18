@@ -87,19 +87,19 @@ export class ToolEventHandler implements EventHandler<ToolPartUpdatedEvent> {
 
        const message = `Tool ${toolPart.state.status}: ${toolPart.tool}`;
 
-       // Log based on configured level
-       switch (this.options.logLevel) {
-         case 'debug':
-           await logger.debug(`${message} ${JSON.stringify(metadata)}`);
-           break;
-         case 'info':
-           await logger.info(`${message} ${JSON.stringify(metadata)}`);
-           break;
-         case 'tool':
-         default:
-           await logger.tool(message, metadata);
-           break;
-       }
+        // Log based on configured level
+        switch (this.options.logLevel) {
+          case 'debug':
+            await logger.debug(`${message} ${JSON.stringify(metadata)}`);
+            break;
+          case 'info':
+            await logger.info(`${message} ${JSON.stringify(metadata)}`);
+            break;
+          case 'tool':
+          default:
+            await logger.info(`[TOOL] ${message}\n${JSON.stringify(metadata, null, 2)}`);
+            break;
+        }
 
     } catch (error) {
       await logger.error(`Error handling tool event: ${error}`);

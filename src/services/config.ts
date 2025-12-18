@@ -6,7 +6,9 @@ import { ConfigError } from '../lib/errors.ts';
 import { cloneRepo, pullRepo } from '../lib/utils/git.ts';
 import { directoryExists, expandHome } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
-import { ValidationService, type ValidationConfig } from './validation.ts';
+import { validateProviderAndModel, withTempOpenCodeClient } from '../lib/utils/validation.ts';
+import { createOpencode } from '@opencode-ai/sdk';
+import { StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
 
 const CONFIG_DIRECTORY = '~/.config/btca';
 const CONFIG_FILENAME = 'btca.json';
@@ -93,21 +95,7 @@ export class RepositoryCache {
     this.cache.set(repoName, entry);
   }
 
-  getStats() {
-    const entries = Array.from(this.cache.values());
-    const now = Date.now();
 
-    return {
-      totalRepos: this.cache.size,
-      averageTimeSinceUpdate: entries.length > 0
-        ? entries.reduce((sum, entry) => sum + (now - entry.lastUpdated), 0) / entries.length
-        : 0,
-      averageTimeSinceCheck: entries.length > 0
-        ? entries.reduce((sum, entry) => sum + (now - entry.lastChecked), 0) / entries.length
-        : 0,
-      reposNeedingUpdate: entries.filter(entry => (now - entry.lastChecked) > entry.ttl).length,
-    };
-  }
 
   clear(): void {
     this.cache.clear();
@@ -327,11 +315,9 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 export class ConfigService {
   private config!: Config;
   private configPath!: string;
-  private validationService: ValidationService;
   private repositoryCache!: RepositoryCache;
 
-  constructor(validationService?: ValidationService) {
-    this.validationService = validationService || new ValidationService(this);
+  constructor() {
   }
 
   async init(): Promise<void> {
@@ -362,7 +348,7 @@ export class ConfigService {
       if (!suppressLogs) {
         console.log(`Using cached repository for ${repo.name} (recently updated)`);
       }
-      await logger.resource(`Repository cache hit for ${repo.name} - skipping update`);
+      await logger.info(`[CACHE] Repository cache hit for ${repo.name} - skipping update`);
       return repo;
     }
 
@@ -424,14 +410,21 @@ export class ConfigService {
 
     // Validate the new configuration before saving
     try {
-      await this.validationService.validateCurrentConfig();
+      // Inline validation logic using helper function
+      await withTempOpenCodeClient(this, async (client) => {
+        await validateProviderAndModel(client, args.provider, args.model);
+      });
+
       await writeConfig(this.config);
       await logger.info(`Model configuration updated to ${args.provider}/${args.model}`);
     } catch (error) {
       // Revert the config change on validation failure
       this.config = oldConfig;
       await logger.error(`Model configuration validation failed: ${error}`);
-      throw error;
+      throw new ConfigurationChangeError(
+        `Configuration validation failed for ${args.provider}/${args.model}`,
+        error
+      );
     }
 
     return { provider: this.config.provider, model: this.config.model };
@@ -472,9 +465,7 @@ export class ConfigService {
 
 
 
-  getValidationService(): ValidationService {
-    return this.validationService;
-  }
+
 
   private getRepositoryCache(): RepositoryCache {
     if (!this.repositoryCache) {
@@ -483,9 +474,7 @@ export class ConfigService {
     return this.repositoryCache;
   }
 
-  getRepositoryCacheStats() {
-    return this.getRepositoryCache().getStats();
-  }
+
 
   // Network and timing
   getOpenCodeBasePort(): number {

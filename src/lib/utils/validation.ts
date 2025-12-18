@@ -1,4 +1,5 @@
-import type { OpencodeClient } from "@opencode-ai/sdk";
+import { createOpencode, type OpencodeClient } from "@opencode-ai/sdk";
+import type { ConfigService } from "../../services/config";
 import {
   InvalidProviderError,
   InvalidModelError,
@@ -42,3 +43,31 @@ export const validateProviderAndModel = async (
     throw new InvalidModelError(providerId, modelId, modelIds);
   }
 };
+
+export async function withTempOpenCodeClient<T>(
+  config: ConfigService,
+  action: (client: OpencodeClient) => Promise<T>,
+  timeout: number = 10000
+): Promise<T> {
+  const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
+  process.env.OPENCODE_CONFIG_DIR = config.getOpenCodeConfigDir();
+
+  try {
+    const { client, server } = await createOpencode({
+      port: 0,
+      timeout: timeout,
+    });
+
+    try {
+      return await action(client);
+    } finally {
+      server.close();
+    }
+  } finally {
+    if (originalConfigDir !== undefined) {
+      process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
+    } else {
+      delete process.env.OPENCODE_CONFIG_DIR;
+    }
+  }
+}
