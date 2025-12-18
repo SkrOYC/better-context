@@ -55,7 +55,7 @@ export class EventProcessor {
   /**
    * Process a single event by calling all applicable handlers
    */
-  private async processEvent(event: SdkEvent): Promise<void> {
+  async processEvent(event: SdkEvent): Promise<void> {
     const applicableHandlers = this.sortedHandlers.filter(({ handler }) => handler.canHandle(event));
 
     if (applicableHandlers.length === 0) {

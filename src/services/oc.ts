@@ -1,5 +1,6 @@
 import {
   createOpencode,
+  createOpencodeClient,
   OpencodeClient,
   type Event,
   type Config as OpenCodeConfig
@@ -123,10 +124,19 @@ export class OcService {
         try {
           await logger.info(`Creating OpenCode instance for ${tech} on port ${port}`);
           const result = await createOpencode({
-            port,
-            config: configObject
+            port
           });
-          return { client: result.client, server: result.server };
+
+          // Create a new client with the directory header set
+          const repoPath = path.join(this.configService.getReposDirectory(), tech);
+          const clientWithDirectory = createOpencodeClient({
+            baseUrl: result.server.url,
+            directory: repoPath
+          });
+
+          await logger.info(`Created client with directory: ${repoPath}`);
+
+          return { client: clientWithDirectory, server: result.server };
         } finally {
           if (originalConfigDir !== undefined) {
             process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
@@ -147,7 +157,6 @@ export class OcService {
     const { question, tech } = args;
     let result!: { client: OpencodeClient; server: { close: () => void; url: string } };
     let sessionID: string | null = null;
-    let streamId: string | null = null;
 
     await logger.info(`Asking question about ${tech}: "${question}"`);
 
@@ -171,7 +180,7 @@ export class OcService {
 
         // Check if the provider is authenticated
         const providerList = await result.client.provider.list();
-        if (providerList.error) {
+        if (providerList.error || !providerList.data) {
           throw new OcError('Failed to list providers', providerList.error);
         }
         const { connected } = providerList.data;
@@ -230,90 +239,55 @@ export class OcService {
           }
         };
 
-        // Create a stream processor for this session
-        streamId = await this.eventStreamManager.createStream(
-          sessionFilteredEvents,
-          {
-            id: `session-${sessionID}`,
-            description: `Event stream for session ${sessionID} (${tech})`,
-            timeoutMs: this.configService.getSessionTimeout() * 60 * 1000,
+        // Create event handlers for processing
+        const messageHandler = new MessageEventHandler({
+          outputStream: process.stdout,
+          enableFormatting: true,
+        });
+        const sessionHandler = new SessionEventHandler({
+          onSessionComplete: async (sessionId) => {
+            await logger.info(`Session ${sessionId} completed`);
           }
-        );
+        });
 
-        // Register handlers on the stream's processor
-        const streamInfo = this.eventStreamManager.getStreamInfo(streamId);
-        if (streamInfo) {
-          const messageHandler = new MessageEventHandler({
-            outputStream: process.stdout,
-            enableFormatting: true,
-          });
-          const sessionHandler = new SessionEventHandler({
-            onSessionComplete: async (sessionId) => {
-              await logger.info(`Session ${sessionId} completed`);
-            }
-          });
-          streamInfo.processor.registerHandler('message-handler', messageHandler);
-          streamInfo.processor.registerHandler('session-handler', sessionHandler);
-        }
+        // Create an event processor for this session
+        const processor = new EventProcessor();
+        processor.registerHandler('message-handler', messageHandler);
+        processor.registerHandler('session-handler', sessionHandler);
 
-        // Fire the prompt asynchronously
+        // Fire the prompt asynchronously (don't await - let it process in background)
         await logger.info(`Sending prompt to OpenCode for session ${sessionID} with provider ${this.configService.rawConfig().provider} and model ${this.configService.rawConfig().model}`);
-        try {
-          await result.client.session.prompt({
-            path: { id: sessionID },
-            body: {
-              agent: 'docs',
-              model: {
-                providerID: this.configService.rawConfig().provider,
-                modelID: this.configService.rawConfig().model
-              },
-              parts: [{ type: 'text', text: question }]
-            }
-          });
-          await logger.info(`Prompt sent successfully for session ${sessionID}`);
-        } catch (err) {
+        result.client.session.prompt({
+          path: { id: sessionID },
+          body: {
+            model: {
+              providerID: this.configService.rawConfig().provider,
+              modelID: this.configService.rawConfig().model
+            },
+            parts: [{ type: 'text', text: question }]
+          }
+        }).catch(async (err) => {
           const promptError = new OcError(String(err), err);
           await logger.error(`Prompt error for ${tech} (session ${sessionID}): ${err}`);
           await logger.error(`Prompt error stack: ${err instanceof Error ? err.stack : String(err)}`);
-
-          // Stop the stream on prompt error
-          if (streamId) {
-            await this.eventStreamManager.stopStream(streamId);
-          }
-
           throw promptError;
-        }
+        });
 
         // Return the processed events through our event processing system
-        // Collect events for caching while yielding them
         const allEvents: Event[] = [];
         const processedEvents = {
           async *[Symbol.asyncIterator]() {
-            // The EventProcessor handles the actual event processing and output
-            // This iterator just yields events that pass through the system
-            // The real processing happens in the handlers registered with the processor
+            // Process each event through handlers and yield
             for await (const event of sessionFilteredEvents) {
+              await processor.processEvent(event);
               allEvents.push(event);
               yield event;
             }
-
-
           }
         };
 
         return processedEvents;
       } catch (error) {
-        // Ensure cleanup even if error occurs after creation
-        if (streamId) {
-          try {
-            await this.eventStreamManager.stopStream(streamId);
-          } catch (streamError) {
-            await logger.error(`Error stopping stream ${streamId}: ${streamError}`);
-          }
-        }
-
-
-
         await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
       }
