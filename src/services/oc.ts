@@ -372,9 +372,7 @@ export class OcService {
         // Always close the server after the session completes (success or error)
         if (serverKey) {
           await logger.info(`Closing server for ${serverKey} after session completion`);
-          await this.serverManager.closeServer(serverKey).catch(async (err) => {
-            await logger.error(`Error closing server ${serverKey}: ${err instanceof Error ? err.message : String(err)}`);
-          });
+          await this.serverManager.closeServer(serverKey);
         }
       }
     })();
