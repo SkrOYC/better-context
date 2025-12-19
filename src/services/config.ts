@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: Config = {
 	model: 'big-pickle',
 	provider: 'opencode',
 	opencodeConfigDir: '~/.config/btca/opencode',
-	opencodeBasePort: 3420,
+	opencodeBasePort: 3420
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -106,17 +106,20 @@ const OPENCODE_CONFIG = (args: {
 				},
 				mode: 'primary',
 				tools: {
-					bash: false,
-					edit: false,
-					write: false,
 					read: true,
 					grep: true,
 					glob: true,
 					list: true,
-					path: false,
+					bash: false,
+					webfetch: false,
+					write: false,
+					edit: false,
+					patch: false,
 					todowrite: false,
 					todoread: false,
-					websearch: false
+					task: false,
+					websearch: false,
+					codesearch: false
 				}
 			}
 		}
@@ -177,7 +180,7 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 			];
 
 			if (validationChecks.some((check) => !check)) {
-throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
+				throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
  - \`reposDirectory\` (string)
  - \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)
  - \`model\` (string)

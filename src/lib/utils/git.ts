@@ -27,27 +27,27 @@ export const cloneRepo = async (args: {
 	repoDir: string;
 	url: string;
 	branch: string;
- }): Promise<void> => {
+}): Promise<void> => {
 	try {
 		const { repoDir, url, branch } = args;
 		const cloneOptions: any = {
-		fs,
-		http,
-		dir: repoDir,
-		url,
-		ref: branch,
-		depth: 1,
-		singleBranch: true,
-		// Suppress all progress output to keep CLI clean
-		onProgress: undefined,
-		onMessage: undefined,
-		// Add timeout to prevent hanging
-		timeout: {
-			block: GIT_TIMEOUT_MS
-		}
-	};
+			fs,
+			http,
+			dir: repoDir,
+			url,
+			ref: branch,
+			depth: 1,
+			singleBranch: true,
+			// Suppress all progress output to keep CLI clean
+			onProgress: undefined,
+			onMessage: undefined,
+			// Add timeout to prevent hanging
+			timeout: {
+				block: GIT_TIMEOUT_MS
+			}
+		};
 
-	await git.clone(cloneOptions);
+		await git.clone(cloneOptions);
 		// Set git config after cloning to avoid author issues during future pull operations
 		await setGitConfig(repoDir);
 	} catch (error) {
@@ -61,7 +61,7 @@ export const pullRepo = async (args: { repoDir: string; branch: string }): Promi
 		const { repoDir, branch } = args;
 		// Set git config before pulling to avoid author issues
 		await setGitConfig(repoDir);
-		
+
 		const pullOptions = {
 			fs,
 			http,

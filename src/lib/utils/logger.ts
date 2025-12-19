@@ -4,103 +4,62 @@ import { expandHome } from './files.ts';
 
 export type LogLevel = 'INFO' | 'ERROR' | 'WARN' | 'DEBUG' | 'LOG';
 
-
-
 export class Logger {
+	private logFilePath: string;
 
-  private logFilePath: string;
+	private logDir: string;
 
-  private logDir: string;
+	constructor() {
+		this.logDir = expandHome('~/.config/btca');
 
+		this.logFilePath = path.join(this.logDir, 'btca.log');
+	}
 
+	private formatLogEntry(level: LogLevel, message: string): string {
+		const timestamp = new Date().toISOString();
 
-  constructor() {
+		return `[${timestamp}] [${level}] ${message}\n`;
+	}
 
-    this.logDir = expandHome('~/.config/btca');
+	private async ensureLogDir(): Promise<void> {
+		try {
+			await fs.mkdir(this.logDir, { recursive: true });
+		} catch (error) {
+			console.error(`Failed to create log directory: ${error}`);
+		}
+	}
 
-    this.logFilePath = path.join(this.logDir, 'btca.log');
+	async log(level: LogLevel, message: string): Promise<void> {
+		try {
+			await this.ensureLogDir();
 
-  }
+			const logEntry = this.formatLogEntry(level, message);
 
+			await fs.appendFile(this.logFilePath, logEntry);
 
+			// Control console output
 
-  private formatLogEntry(level: LogLevel, message: string): string {
+			if (level === 'ERROR') {
+				console.error(message);
+			} else if (level === 'LOG') {
+				console.log(message);
+			} else if (level === 'WARN') {
+				console.log(`Warning: ${message}`);
+			} else if (level === 'DEBUG' && process.env.BTCA_DEBUG) {
+				console.error(`[DEBUG] ${message}`);
+			}
 
-    const timestamp = new Date().toISOString();
+			// INFO is now file-only
+		} catch (error) {
+			// Fail silently to avoid disrupting the main application
 
-    return `[${timestamp}] [${level}] ${message}\n`;
+			if (process.env.BTCA_DEBUG) {
+				console.error(`Failed to write to log file: ${error}`);
+			}
+		}
+	}
 
-  }
-
-
-
-  private async ensureLogDir(): Promise<void> {
-
-    try {
-
-      await fs.mkdir(this.logDir, { recursive: true });
-
-    } catch (error) {
-
-      console.error(`Failed to create log directory: ${error}`);
-
-    }
-
-  }
-
-
-
-  async log(level: LogLevel, message: string): Promise<void> {
-
-    try {
-
-      await this.ensureLogDir();
-
-      const logEntry = this.formatLogEntry(level, message);
-
-      await fs.appendFile(this.logFilePath, logEntry);
-
-
-
-      // Control console output
-
-      if (level === 'ERROR') {
-
-        console.error(message);
-
-      } else if (level === 'LOG') {
-
-        console.log(message);
-
-      } else if (level === 'WARN') {
-
-        console.log(`Warning: ${message}`);
-
-      } else if (level === 'DEBUG' && process.env.BTCA_DEBUG) {
-
-        console.error(`[DEBUG] ${message}`);
-
-      }
-
-      // INFO is now file-only
-
-    } catch (error) {
-
-      // Fail silently to avoid disrupting the main application
-
-      if (process.env.BTCA_DEBUG) {
-
-        console.error(`Failed to write to log file: ${error}`);
-
-      }
-
-    }
-
-  }
-
-
-
-    /**
+	/**
 
 
 
@@ -114,77 +73,31 @@ export class Logger {
 
      */
 
+	async write(message: string): Promise<void> {
+		try {
+			// For the log file, we still want newlines or some separator to keep it readable,
 
+			// but for simplicity we'll just write it as is.
 
-    async write(message: string): Promise<void> {
+			// Actually, it's better to just write the raw stream to stdout and maybe
 
+			// not log every single chunk to the file to avoid massive log files.
 
+			// But let's stay consistent.
 
-      try {
+			await this.ensureLogDir();
 
+			await fs.appendFile(this.logFilePath, message);
 
+			process.stdout.write(message);
+		} catch (error) {
+			if (process.env.BTCA_DEBUG) {
+				console.error(`Failed to write to log: ${error}`);
+			}
+		}
+	}
 
-        // For the log file, we still want newlines or some separator to keep it readable,
-
-
-
-        // but for simplicity we'll just write it as is. 
-
-
-
-        // Actually, it's better to just write the raw stream to stdout and maybe 
-
-
-
-        // not log every single chunk to the file to avoid massive log files.
-
-
-
-        // But let's stay consistent.
-
-
-
-        await this.ensureLogDir();
-
-
-
-        await fs.appendFile(this.logFilePath, message);
-
-
-
-        process.stdout.write(message);
-
-
-
-      } catch (error) {
-
-
-
-        if (process.env.BTCA_DEBUG) {
-
-
-
-          console.error(`Failed to write to log: ${error}`);
-
-
-
-        }
-
-
-
-      }
-
-
-
-    }
-
-
-
-  
-
-
-
-    /**
+	/**
 
 
 
@@ -194,50 +107,31 @@ export class Logger {
 
      */
 
-  async info(message: string): Promise<void> {
+	async info(message: string): Promise<void> {
+		await this.log('INFO', message);
+	}
 
-    await this.log('INFO', message);
-
-  }
-
-
-
-  /**
+	/**
 
    * Intentional command output for the user.
 
    */
 
-  async ui(message: string): Promise<void> {
+	async ui(message: string): Promise<void> {
+		await this.log('LOG', message);
+	}
 
-    await this.log('LOG', message);
+	async error(message: string): Promise<void> {
+		await this.log('ERROR', message);
+	}
 
-  }
+	async warn(message: string): Promise<void> {
+		await this.log('WARN', message);
+	}
 
-
-
-  async error(message: string): Promise<void> {
-
-    await this.log('ERROR', message);
-
-  }
-
-
-
-  async warn(message: string): Promise<void> {
-
-    await this.log('WARN', message);
-
-  }
-
-
-
-  async debug(message: string): Promise<void> {
-
-    await this.log('DEBUG', message);
-
-  }
-
+	async debug(message: string): Promise<void> {
+		await this.log('DEBUG', message);
+	}
 }
 
 // Create a singleton instance for the application

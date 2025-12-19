@@ -79,6 +79,7 @@ If you encounter persistent errors, check your network connection, provider cred
 `btca` efficiently manages technology repositories for optimal performance:
 
 ### Repository Caching
+
 - **Smart Update Detection**: Repository clone/pull operations are cached for 15 minutes
 - **Reduced I/O**: Avoids unnecessary git operations when repositories are recently updated
 - **Background Updates**: Repository updates happen only when needed, not on every question

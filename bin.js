@@ -1,48 +1,48 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const PLATFORM_ARCH = `${process.platform}-${process.arch}`;
 
 const TARGET_MAP = {
-  "darwin-arm64": "btca-darwin-arm64",
-  "darwin-x64": "btca-darwin-x64",
-  "linux-x64": "btca-linux-x64",
-  "linux-arm64": "btca-linux-arm64",
-  "win32-x64": "btca-windows-x64.exe",
+	'darwin-arm64': 'btca-darwin-arm64',
+	'darwin-x64': 'btca-darwin-x64',
+	'linux-x64': 'btca-linux-x64',
+	'linux-arm64': 'btca-linux-arm64',
+	'win32-x64': 'btca-windows-x64.exe'
 };
 
 const binaryName = TARGET_MAP[PLATFORM_ARCH];
 
 if (!binaryName) {
-  console.error(
-    `[btca] Unsupported platform: ${PLATFORM_ARCH}. ` +
-      "Please open an issue with your OS/CPU details."
-  );
-  process.exit(1);
+	console.error(
+		`[btca] Unsupported platform: ${PLATFORM_ARCH}. ` +
+			'Please open an issue with your OS/CPU details.'
+	);
+	process.exit(1);
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const binPath = path.join(__dirname, "dist", binaryName);
+const binPath = path.join(__dirname, 'dist', binaryName);
 
 if (!fs.existsSync(binPath)) {
-  console.error(
-    `[btca] Prebuilt binary not found for ${PLATFORM_ARCH}. ` +
-      "Try reinstalling, or open an issue if the problem persists."
-  );
-  process.exit(1);
+	console.error(
+		`[btca] Prebuilt binary not found for ${PLATFORM_ARCH}. ` +
+			'Try reinstalling, or open an issue if the problem persists.'
+	);
+	process.exit(1);
 }
 
 const result = spawnSync(binPath, process.argv.slice(2), {
-  stdio: "inherit",
+	stdio: 'inherit'
 });
 
 if (result.error) {
-  console.error(`[btca] Failed to start binary: ${result.error}`);
-  process.exit(1);
+	console.error(`[btca] Failed to start binary: ${result.error}`);
+	process.exit(1);
 }
 
 process.exit(result.status ?? 1);
