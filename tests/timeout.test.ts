@@ -2,7 +2,6 @@
 import { describe, it, expect, mock, spyOn, afterEach } from 'bun:test';
 import { OcService } from '../src/services/oc.ts';
 import { ConfigService } from '../src/services/config.ts';
-import { ServerManager } from '../src/lib/utils/ServerManager.ts';
 import { OcError } from '../src/lib/errors.ts';
 import { MockOpencodeClient } from './utils/timeout-test-utils.ts';
 
@@ -19,7 +18,7 @@ mock.module('../src/lib/utils/logger.ts', () => ({
 }));
 
 describe('Timeout Logic', () => {
-  // Setup mocks
+// Setup mocks
   const mockConfigService = new ConfigService();
   
   // Manually set config to avoid crashes (Bun spyOn might let original method run if not fully mocked or on failure)
@@ -30,17 +29,15 @@ describe('Timeout Logic', () => {
     provider: 'test-provider',
     model: 'test-model',
     opencodeBasePort: 3000,
-    opencodePortRange: 10,
     requestTimeoutMs: 100, // Short timeout for test
     sessionInactivityTimeoutMs: 100, // Short timeout for test
     repoCacheTtlMs: 1000
   };
 
-  // Manual mocks on the instance because spyOn seems to be failing integration sometimes
+  // Manual mocks on instance because spyOn seems to be failing integration sometimes
   mockConfigService.getOpenCodeConfig = mock(async () => undefined);
   mockConfigService.getRepos = mock(() => [{ name: 'test-tech', path: '/tmp/test', url: 'http://test', branch: 'main' }]);
   mockConfigService.getOpenCodeBasePort = mock(() => 3000);
-  mockConfigService.getOpenCodePortRange = mock(() => 10);
   mockConfigService.getOpenCodeConfigDir = mock(() => '/tmp/config');
   mockConfigService.getReposDirectory = mock(() => '/tmp/repos');
   // @ts-ignore
@@ -51,29 +48,23 @@ describe('Timeout Logic', () => {
   mockConfigService.getRequestTimeoutMs = mock(() => 100);
   mockConfigService.getSessionInactivityTimeoutMs = mock(() => 100);
 
-  const mockServerManager = new ServerManager();
-  mockServerManager.createServer = mock(async () => ({ 
+  // Mock global OpenCode instance
+  const mockOpenCodeInstance = { 
+    client: new MockOpencodeClient(null as any) as any,
     server: { 
       url: 'http://localhost:3000', 
       close: mock(() => {}) 
-    }, 
-    port: 3000 
-  }));
-  mockServerManager.closeServer = mock(async () => {});
+    } 
+  };
 
-  // Create service
-  const ocService = new OcService(mockConfigService as any, mockServerManager as any);
+  // Create service with single instance
+  const ocService = new OcService(mockConfigService as any, mockOpenCodeInstance);
 
   // Helper to replace the getOpencodeInstanceWithKey method (private)
   const setupMockClient = (events: AsyncGenerator<any, void, unknown>) => {
     const mockClient = new MockOpencodeClient(events);
     // @ts-ignore - overriding private method
-    ocService.getOpencodeInstanceWithKey = mock(async () => {
-      return { 
-        client: mockClient as any, 
-        server: { url: 'http://localhost:3000', close: () => {} } 
-      };
-    });
+    ocService.createDirectoryClient = mock(async () => mockClient as any);
     return mockClient;
   };
 

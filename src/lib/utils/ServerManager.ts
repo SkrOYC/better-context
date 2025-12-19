@@ -51,17 +51,17 @@ export class ServerManager {
     }
   }
   
-  private async cleanupStaleServers(): Promise<void> {
-    const staleThreshold = 30 * 60 * 1000; // 30 minutes
-    const now = Date.now();
-    
-    for (const [key, entry] of this.activeServers.entries()) {
-      if (now - entry.createdAt > staleThreshold) {
-        await logger.info(`Cleaning up stale server for ${key}`);
-        await this.closeServer(key);
-      }
-    }
-  }
+	private async cleanupStaleServers(): Promise<void> {
+		const staleThreshold = 10 * 60 * 1000; // 10 minutes
+		const now = Date.now();
+		
+		for (const [key, entry] of this.activeServers.entries()) {
+			if (now - entry.createdAt > staleThreshold) {
+				await logger.info(`Cleaning up stale server for ${key}`);
+				await this.closeServer(key);
+			}
+		}
+	}
   
   private async forceCloseAll(): Promise<void> {
     clearInterval(this.cleanupInterval);

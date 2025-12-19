@@ -31,7 +31,6 @@ type Config = {
 	opencodeConfigDir: string;
 	// Network and timing
 	opencodeBasePort: number;
-	opencodePortRange: number;
 	requestTimeoutMs: number;
 	sessionInactivityTimeoutMs: number;
 	// Cache settings
@@ -112,13 +111,12 @@ const DEFAULT_CONFIG: Config = {
 	],
 	model: 'big-pickle',
 	provider: 'opencode',
-	sessionTimeoutMinutes: 30,
+	sessionTimeoutMinutes: 10,
 	maxRetries: 3,
 
 	opencodeConfigDir: '~/.config/btca/opencode',
 	// Network and timing
 	opencodeBasePort: 3420,
-	opencodePortRange: 5, // 3420-3424
 	requestTimeoutMs: 10000, // 10 seconds
 	sessionInactivityTimeoutMs: 120000, // 2 minutes
 	// Cache settings
@@ -253,9 +251,7 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 			const hasValidOpenCodeBasePort =
 				parsed.opencodeBasePort === undefined ||
 				(typeof parsed.opencodeBasePort === 'number' && parsed.opencodeBasePort > 0);
-			const hasValidOpenCodePortRange =
-				parsed.opencodePortRange === undefined ||
-				(typeof parsed.opencodePortRange === 'number' && parsed.opencodePortRange > 0);
+			
 			const hasValidRequestTimeout =
 				parsed.requestTimeoutMs === undefined ||
 				(typeof parsed.requestTimeoutMs === 'number' && parsed.requestTimeoutMs > 0);
@@ -278,27 +274,25 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 
 				hasValidOpenCodeConfigDir,
 				hasValidOpenCodeBasePort,
-				hasValidOpenCodePortRange,
 				hasValidRequestTimeout,
 				hasValidInactivityTimeout,
 				hasValidRepoCacheTtl
 			];
 
 			if (validationChecks.some((check) => !check)) {
-				throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
-- \`reposDirectory\` (string)
-- \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)
-- \`model\` (string)
-- \`provider\` (string)
-- \`sessionTimeoutMinutes\` (positive number, optional)
-- \`maxRetries\` (non-negative number, optional)
+throw new Error(`Config file is invalid. Ensure the following fields are correctly defined:
+ - \`reposDirectory\` (string)
+ - \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)
+ - \`model\` (string)
+ - \`provider\` (string)
+ - \`sessionTimeoutMinutes\` (positive number, optional)
+ - \`maxRetries\` (non-negative number, optional)
 
-- \`opencodeConfigDir\` (string, optional)
-- \`opencodeBasePort\` (positive number, optional)
-- \`opencodePortRange\` (positive number, optional)
-- \`requestTimeoutMs\` (positive number, optional)
-- \`sessionInactivityTimeoutMs\` (positive number, optional)
-- \`repoCacheTtlMs\` (positive number, optional)`);
+ - \`opencodeConfigDir\` (string, optional)
+ - \`opencodeBasePort\` (positive number, optional)
+ - \`requestTimeoutMs\` (positive number, optional)
+ - \`sessionInactivityTimeoutMs\` (positive number, optional)
+ - \`repoCacheTtlMs\` (positive number, optional)`);
 			}
 			const reposDir = expandHome(parsed.reposDirectory);
 			config = {
@@ -312,7 +306,6 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 				opencodeConfigDir: parsed.opencodeConfigDir ?? expandHome('~/.config/btca/opencode'),
 				// Network and timing
 				opencodeBasePort: parsed.opencodeBasePort ?? 3420,
-				opencodePortRange: parsed.opencodePortRange ?? 5,
 				requestTimeoutMs: parsed.requestTimeoutMs ?? 10000,
 				sessionInactivityTimeoutMs: parsed.sessionInactivityTimeoutMs ?? 120000,
 				// Cache settings
@@ -501,9 +494,7 @@ export class ConfigService {
 		return this.config.opencodeBasePort;
 	}
 
-	getOpenCodePortRange(): number {
-		return this.config.opencodePortRange;
-	}
+	
 
 	getRequestTimeoutMs(): number {
 		return this.config.requestTimeoutMs;

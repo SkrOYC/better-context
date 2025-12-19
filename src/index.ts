@@ -1,25 +1,22 @@
 import { CliService } from './services/cli.ts';
 import { OcService } from './services/oc.ts';
 import { ConfigService } from './services/config.ts';
-import { ServerManager } from './lib/utils/ServerManager.ts';
 import { logger } from './lib/utils/logger.ts';
 import { createOpencode } from '@opencode-ai/sdk';
-import { validateProviderAndModel, withTempOpenCodeClient } from './lib/utils/validation.ts';
-import { StartupValidationError } from './lib/errors.ts';
 
 // Check if no arguments provided (just "btca" or "bunx btca")
 const hasNoArgs = process.argv.length <= 2;
 
 let oc: OcService | null = null;
-let serverManagerInstance: ServerManager | null = null;
+let globalOpenCodeInstance: { client: any; server: { close: () => void; url: string } } | null = null;
 
 const shutdown = async (signal: string, exitCode: number = 0): Promise<void> => {
   try {
     await logger.info(`Received ${signal}, shutting down gracefully...`);
 
-    // Close all servers managed by ServerManager
-    if (serverManagerInstance) {
-      await serverManagerInstance.closeAll();
+    // Close global OpenCode instance
+    if (globalOpenCodeInstance) {
+      globalOpenCodeInstance.server.close();
     }
 
     await logger.info('Shutdown complete');
@@ -38,30 +35,31 @@ function setupGracefulShutdown(): void {
 
 async function main(): Promise<void> {
   try {
-    // Initialize ConfigService first (without validation)
+    // Initialize ConfigService first
     const config = new ConfigService();
     await config.init();
 
-    // Inline startup validation
+    // Create single global OpenCode instance
+    const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
+    process.env.OPENCODE_CONFIG_DIR = config.getOpenCodeConfigDir();
+
     try {
-      const { provider, model } = config.getModel();
-      await logger.info(`Performing startup validation for ${provider}/${model}`);
-
-      await withTempOpenCodeClient(config, async (client) => {
-        // Validate the configured provider/model combination
-        await validateProviderAndModel(client, provider, model);
-        await logger.info('Startup validation completed successfully');
-      }, config.getRequestTimeoutMs());
-    } catch (error) {
-      await logger.error(`Startup validation failed: ${error}`);
-
-      // Continue with invalid configuration due to fail-open policy
-      await logger.warn('Continuing with invalid configuration due to fail-open policy');
+      await logger.info('Creating global OpenCode instance');
+      globalOpenCodeInstance = await createOpencode({
+        port: config.getOpenCodeBasePort()
+      });
+      await logger.info(`Global OpenCode instance created on port ${config.getOpenCodeBasePort()}`);
+    } finally {
+      // Restore environment
+      if (originalConfigDir !== undefined) {
+        process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
+      } else {
+        delete process.env.OPENCODE_CONFIG_DIR;
+      }
     }
 
-    // Initialize ServerManager and OcService
-    serverManagerInstance = new ServerManager();
-    oc = new OcService(config, serverManagerInstance);
+    // Initialize OcService with global instance
+    oc = new OcService(config, globalOpenCodeInstance);
 
     // Setup graceful shutdown handlers
     setupGracefulShutdown();
