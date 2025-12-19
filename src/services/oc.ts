@@ -41,18 +41,7 @@ export class OcService {
     return clientWithDirectory;
   }
 
-  private extractResponseFromEvents(events: Event[]): string {
-    let response = '';
-    
-    for (const event of events) {
-      if (event.type === 'message.part.updated' && 
-          event.properties.part.type === 'text') {
-        response += event.properties.part.text;
-      }
-    }
-    
-    return response;
-  }
+  
 
   async askQuestion(args: { question: string; tech: string }): Promise<void> {
     const { question, tech } = args;
@@ -92,21 +81,27 @@ export class OcService {
       sessionID = session.data.id;
       await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
 
-      // Collect events and extract response
-      const events: Event[] = [];
-      let sessionCompleted = false;
-
       // Get the event stream
       const eventsSubscription = await clientWithDirectory.event.subscribe({});
 
+      // Send prompt, but don't await promise here. Process events concurrently.
+      const promptPromise = clientWithDirectory.session.prompt({
+        path: { id: sessionID },
+        body: {
+          model: {
+            providerID: this.configService.rawConfig().provider,
+            modelID: this.configService.rawConfig().model
+          },
+          parts: [{ type: 'text', text: question }]
+        }
+      });
+
       // Process events directly
       for await (const event of eventsSubscription.stream) {
-        events.push(event);
-
-        // Check for session completion
+        // Handle session completion (only break when status is idle, not any status update)
         if (event.type === 'session.status.updated' && 
-            event.properties.sessionID === sessionID) {
-          sessionCompleted = true;
+            event.properties.sessionID === sessionID &&
+            (event.properties as any).status?.type === 'idle') {
           await logger.info(`Session ${sessionID} completed for ${tech}`);
           break;
         }
@@ -122,26 +117,14 @@ export class OcService {
 
         // Output text parts in real-time
         if (event.type === 'message.part.updated' && 
-            event.properties.part.type === 'text' &&
-            event.properties.part.messageID) {
-          process.stdout.write(event.properties.part.text);
+            (event.properties.part as any).type === 'text' &&
+            (event.properties.part as any).messageID) {
+          process.stdout.write((event.properties.part as any).text);
         }
       }
 
-      // Send the prompt
-      await logger.info(`Sending prompt to OpenCode for session ${sessionID} with provider ${this.configService.rawConfig().provider} and model ${this.configService.rawConfig().model}`);
-      
-      const promptResponse = await clientWithDirectory.session.prompt({
-        path: { id: sessionID },
-        body: {
-          model: {
-            providerID: this.configService.rawConfig().provider,
-            modelID: this.configService.rawConfig().model
-          },
-          parts: [{ type: 'text', text: question }]
-        }
-      });
-
+      // Now, await prompt promise to catch any errors during its submission.
+      const promptResponse = await promptPromise;
       if (promptResponse.error) {
         throw new OcError('Prompt failed', promptResponse.error);
       }

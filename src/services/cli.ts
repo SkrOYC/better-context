@@ -272,6 +272,11 @@ EXAMPLES:
 
   private async handleConfigReposRemoveCommand(name: string): Promise<void> {
     try {
+      const confirmed = await askConfirmation(`Are you sure you want to remove repo "${name}" from config? (y/N): `);
+      if (!confirmed) {
+        console.log('Aborted.');
+        return;
+      }
       await this.config.removeRepo(name);
       console.log(`Repository "${name}" removed successfully.`);
     } catch (error: any) {
