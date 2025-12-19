@@ -300,7 +300,7 @@ throw new Error(`Config file is invalid. Ensure the following fields are correct
 				repos: parsed.repos,
 				model: parsed.model,
 				provider: parsed.provider,
-				sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 30,
+				sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 10,
 				maxRetries: parsed.maxRetries ?? 3,
 
 				opencodeConfigDir: parsed.opencodeConfigDir ?? expandHome('~/.config/btca/opencode'),

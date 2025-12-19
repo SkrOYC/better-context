@@ -150,46 +150,7 @@ export class OcService {
 
 
 
-        // Create a filtered event stream that only includes events for this session
-        const self = this; // Capture this for use in generator
-        const sessionFilteredEvents = {
-          async *[Symbol.asyncIterator]() {
-            let sessionCompleted = false;
-            let eventCount = 0;
-            for await (const event of events.stream) {
-              eventCount++;
-              const sessionIdProp = hasSessionId(event) ? event.properties.sessionID : 'none';
-              await logger.debug(`Received event ${eventCount} for session ${sessionID}: type=${event.type}, eventSessionID=${sessionIdProp}`);
-
-               // Type-safe event filtering and session completion handling
-              if (!hasSessionId(event) || event.properties.sessionID === sessionID) {
-                // Handle session completion with type-safe event checking
-                if (isSessionIdleEvent(event) && event.properties.sessionID === sessionID) {
-                  sessionCompleted = true;
-                  await logger.info(`Session ${sessionID} completed for ${tech} after ${eventCount} events`);
-                }
-
-                if (isSessionErrorEvent(event) && event.properties.sessionID === sessionID) {
-                  sessionCompleted = true;
-                  const errorProps = event.properties as { error?: { message?: string } };
-                  const errorMsg = `Session ${sessionID} errored: ${errorProps.error?.message || 'Unknown error'}`;
-                  await logger.error(errorMsg);
-                  throw new OcError(errorMsg, errorProps.error);
-                }
-
-                // Log message.updated events for debugging
-                if (isMessageUpdatedEvent(event)) {
-                  const messageID = event.properties.info.id;
-                  logger.debug(`Received message.updated for messageID: ${messageID}`);
-                }
-
-                await logger.debug(`[${eventCount}] Received ${event.type} for session ${sessionID}`);
-                yield event;
-              }
-            }
-            await logger.info(`Event stream finished for session ${sessionID} with ${eventCount} total events`);
-          }
-        };
+        
 
 
         // Create event handlers for processing
@@ -278,6 +239,46 @@ export class OcService {
         resetTimeout(); // Start the timer now that we're listening
 
         // Create a filtered event stream that only includes events for this session
+        const self = this; // Capture this for use in generator
+        const sessionFilteredEvents = {
+          async *[Symbol.asyncIterator]() {
+            let sessionCompleted = false;
+            let eventCount = 0;
+            for await (const event of events.stream) {
+              eventCount++;
+              const sessionIdProp = hasSessionId(event) ? event.properties.sessionID : 'none';
+              await logger.debug(`Received event ${eventCount} for session ${sessionID}: type=${event.type}, eventSessionID=${sessionIdProp}`);
+
+               // Type-safe event filtering and session completion handling
+              if (!hasSessionId(event) || event.properties.sessionID === sessionID) {
+                // Handle session completion with type-safe event checking
+                if (isSessionIdleEvent(event) && event.properties.sessionID === sessionID) {
+                  sessionCompleted = true;
+                  await logger.info(`Session ${sessionID} completed for ${tech} after ${eventCount} events`);
+                }
+
+                if (isSessionErrorEvent(event) && event.properties.sessionID === sessionID) {
+                  sessionCompleted = true;
+                  const errorProps = event.properties as { error?: { message?: string } };
+                  const errorMsg = `Session ${sessionID} errored: ${errorProps.error?.message || 'Unknown error'}`;
+                  await logger.error(errorMsg);
+                  throw new OcError(errorMsg, errorProps.error);
+                }
+
+                // Log message.updated events for debugging
+                if (isMessageUpdatedEvent(event)) {
+                  const messageID = event.properties.info.id;
+                  logger.debug(`Received message.updated for messageID: ${messageID}`);
+                }
+
+                await logger.debug(`[${eventCount}] Received ${event.type} for session ${sessionID}`);
+                yield event;
+              }
+            }
+            await logger.info(`Event stream finished for session ${sessionID} with ${eventCount} total events`);
+          }
+        };
+
         try {
           await Promise.race([
             (async () => {
