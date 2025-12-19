@@ -226,9 +226,9 @@ EXAMPLES:
     if (!provider && !model) {
       // Show current model settings
       const currentModel = this.config.getModel();
-      console.log(`Current configuration:`);
-      console.log(`  Provider: ${currentModel.provider}`);
-      console.log(`  Model: ${currentModel.model}`);
+      await logger.ui(`Current configuration:`);
+      await logger.ui(`  Provider: ${currentModel.provider}`);
+      await logger.ui(`  Model: ${currentModel.model}`);
       return;
     }
 
@@ -238,28 +238,28 @@ EXAMPLES:
 
     // Set new model - TypeScript assertion since Commander.js validation ensures both are provided
     const updatedModel = await this.config.updateModel({ provider: provider!, model: model! });
-    console.log(`Model configuration updated:`);
-    console.log(`  Provider: ${updatedModel.provider}`);
-    console.log(`  Model: ${updatedModel.model}`);
+    await logger.ui(`Model configuration updated:`);
+    await logger.ui(`  Provider: ${updatedModel.provider}`);
+    await logger.ui(`  Model: ${updatedModel.model}`);
   }
 
   private async handleConfigReposListCommand(): Promise<void> {
     const repos = this.config.getRepos();
     if (repos.length === 0) {
-      console.log('No repositories configured.');
+      await logger.ui('No repositories configured.');
       return;
     }
 
-    console.log('Configured repositories:');
-    repos.forEach((repo, index) => {
-      console.log(`  ${index + 1}. ${repo.name}`);
-      console.log(`     URL: ${repo.url}`);
-      console.log(`     Branch: ${repo.branch}`);
+    await logger.ui('Configured repositories:');
+    for (const [index, repo] of repos.entries()) {
+      await logger.ui(`  ${index + 1}. ${repo.name}`);
+      await logger.ui(`     URL: ${repo.url}`);
+      await logger.ui(`     Branch: ${repo.branch}`);
       if (repo.specialNotes) {
-        console.log(`     Notes: ${repo.specialNotes}`);
+        await logger.ui(`     Notes: ${repo.specialNotes}`);
       }
-      console.log();
-    });
+      await logger.ui('');
+    }
   }
 
   private async handleConfigReposAddCommand(name: string, url: string, branch: string, notes?: string): Promise<void> {
@@ -271,29 +271,29 @@ EXAMPLES:
     };
 
     await this.config.addRepo(repo);
-    console.log(`Repository "${name}" added successfully.`);
+    await logger.ui(`Repository "${name}" added successfully.`);
   }
 
   private async handleConfigReposRemoveCommand(name: string): Promise<void> {
     const confirmed = await askConfirmation(`Are you sure you want to remove repo "${name}" from config? (y/N): `);
     if (!confirmed) {
-      console.log('Aborted.');
+      await logger.ui('Aborted.');
       return;
     }
     await this.config.removeRepo(name);
-    console.log(`Repository "${name}" removed successfully.`);
+    await logger.ui(`Repository "${name}" removed successfully.`);
   }
 
   private async handleConfigShowCommand(): Promise<void> {
     const config = this.config.rawConfig();
     const model = this.config.getModel();
 
-    console.log('Current configuration:');
-    console.log(`  Repos directory: ${config.reposDirectory}`);
-    console.log(`  OpenCode config directory: ${config.opencodeConfigDir}`);
-    console.log(`  OpenCode base port: ${config.opencodeBasePort}`);
-    console.log(`  Provider: ${model.provider}`);
-    console.log(`  Model: ${model.model}`);
-    console.log(`  Repositories: ${config.repos.length}`);
+    await logger.ui('Current configuration:');
+    await logger.ui(`  Repos directory: ${config.reposDirectory}`);
+    await logger.ui(`  OpenCode config directory: ${config.opencodeConfigDir}`);
+    await logger.ui(`  OpenCode base port: ${config.opencodeBasePort}`);
+    await logger.ui(`  Provider: ${model.provider}`);
+    await logger.ui(`  Model: ${model.model}`);
+    await logger.ui(`  Repositories: ${config.repos.length}`);
   }
 }

@@ -135,11 +135,11 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 
 		let config: Config;
 		if (!exists) {
-			console.log(`Config file not found at ${configPath}, creating default config...`);
+			await logger.info(`Config file not found at ${configPath}, creating default config...`);
 			// Ensure directory exists
 			await fs.mkdir(configDir, { recursive: true });
 			await fs.writeFile(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2));
-			console.log(`Default config created at ${configPath}`);
+			await logger.info(`Default config created at ${configPath}`);
 			const reposDir = expandHome(DEFAULT_CONFIG.reposDirectory);
 			config = {
 				...DEFAULT_CONFIG,
@@ -239,17 +239,17 @@ export class ConfigService {
 		try {
 			const exists = await directoryExists(repoDir);
 			if (exists) {
-				if (!suppressLogs) console.log(`Pulling latest changes for ${repo.name}...`);
+				if (!suppressLogs) await logger.info(`Pulling latest changes for ${repo.name}...`);
 				await logger.info(
 					`Pulling latest changes for ${repo.name} from ${repo.url} (branch: ${branch})`
 				);
 				await pullRepo({ repoDir, branch });
 			} else {
-				if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
+				if (!suppressLogs) await logger.info(`Cloning ${repo.name}...`);
 				await logger.info(`Cloning ${repo.name} from ${repo.url} (branch: ${branch})`);
 				await cloneRepo({ repoDir, url: repo.url, branch });
 			}
-			if (!suppressLogs) console.log(`Done with ${repo.name}`);
+			if (!suppressLogs) await logger.info(`Done with ${repo.name}`);
 			await logger.info(`${repo.name} operation completed successfully`);
 		} catch (error) {
 			await logger.error(

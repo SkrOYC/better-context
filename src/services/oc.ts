@@ -74,8 +74,9 @@ export class OcService {
       });
 
       if (session.error) {
-        await logger.error(`Failed to start OpenCode session for ${tech}: ${session.error}`);
-        throw new OcError('FAILED TO START OPENCODE SESSION', session.error);
+        const errorDetail = JSON.stringify(session.error, null, 2);
+        await logger.error(`Failed to start OpenCode session for ${tech}: ${errorDetail}`);
+        throw new OcError(`FAILED TO START OPENCODE SESSION: ${session.error.message || 'Unknown error'}`, session.error);
       }
 
       sessionID = session.data.id;
@@ -97,10 +98,21 @@ export class OcService {
         }
       });
 
+      const messageRoles = new Map<string, string>();
+
       // Process events directly
       for await (const event of eventsSubscription.stream) {
-        // Identify session ID from various possible locations in event properties
         const props = event.properties as any;
+        
+        // Track message roles from info events
+        if (event.type === 'message.updated' || event.type === 'message.created') {
+          const info = props.info || props.message;
+          if (info && info.id && info.role) {
+            messageRoles.set(info.id, info.role);
+          }
+        }
+
+        // Identify session ID from various possible locations in event properties
         const eventSessionID = 
           props.sessionID || 
           props.session?.id ||
@@ -135,18 +147,38 @@ export class OcService {
         }
 
         // Output text parts in real-time
-        if (event.type === 'message.part.updated' && 
-            (event.properties.part as any).type === 'text' &&
-            (event.properties.part as any).messageID) {
-          const part = event.properties.part as any;
-          const partID = `${part.messageID}-${part.index ?? 0}`;
-          const fullText = part.text || '';
-          const alreadyWritten = writtenLengths.get(partID) || 0;
+        if (event.type === 'message.part.updated' || event.type === 'message.part.created') {
+          const part = props.part as any;
+          if (part && part.type === 'text') {
+            const partID = `${part.messageID}-${part.index ?? 0}`;
+            
+            // Check role - if unknown, we assume it might be assistant until proven otherwise,
+            // but we also check if the text matches the user question.
+            let role = messageRoles.get(part.messageID);
+            
+            // If we know it's the user, skip
+            if (role === 'user') continue;
+            
+            // If text exactly matches question, it's likely the user prompt being echoed
+            if (part.text === question) {
+              messageRoles.set(part.messageID, 'user');
+              continue;
+            }
 
-          if (fullText.length > alreadyWritten) {
-            const delta = fullText.slice(alreadyWritten);
-            process.stdout.write(delta);
-            writtenLengths.set(partID, fullText.length);
+            // At this point it's likely assistant or unknown role
+            if (props.delta) {
+              await logger.write(props.delta);
+              writtenLengths.set(partID, (part.text || '').length);
+            } else {
+              const fullText = part.text || '';
+              const alreadyWritten = writtenLengths.get(partID) || 0;
+
+              if (fullText.length > alreadyWritten) {
+                const delta = fullText.slice(alreadyWritten);
+                await logger.write(delta);
+                writtenLengths.set(partID, fullText.length);
+              }
+            }
           }
         }
       }
@@ -158,7 +190,7 @@ export class OcService {
       }
 
       // Ensure we end with a newline
-      process.stdout.write('\n');
+      await logger.write('\n');
 
     } catch (error) {
       await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
