@@ -2,13 +2,13 @@ import { CliService } from './services/cli.ts';
 import { OcService } from './services/oc.ts';
 import { ConfigService } from './services/config.ts';
 import { logger } from './lib/utils/logger.ts';
-import { createOpencode } from '@opencode-ai/sdk';
+import { createOpencode, type OpencodeClient } from '@opencode-ai/sdk';
 
 // Check if no arguments provided (just "btca" or "bunx btca")
 const hasNoArgs = process.argv.length <= 2;
 
 let oc: OcService | null = null;
-let globalOpenCodeInstance: { client: any; server: { close: () => void; url: string } } | null = null;
+let globalOpenCodeInstance: { client: OpencodeClient; server: { close: () => void; url: string } } | null = null;
 
 const shutdown = async (signal: string, exitCode: number = 0): Promise<void> => {
   try {
