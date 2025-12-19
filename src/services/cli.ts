@@ -1,7 +1,7 @@
 import * as readline from 'readline';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { OcService, type OcEvent } from './oc.ts';
 import { ConfigService } from './config.ts';
 import { createOpencode } from '@opencode-ai/sdk';
@@ -93,7 +93,9 @@ For more detailed help, use: btca <command> --help`)
       .command('ask')
       .description('Ask questions about technologies using AI')
       .requiredOption('-q, --question <question>', 'question to ask about the technology')
-      .requiredOption('-t, --tech <technology>', 'technology to ask about')
+      .addOption(new Option('-t, --tech <technology>', 'technology to ask about')
+        .choices(repos.map(repo => repo.name))
+        .makeOptionMandatory())
       .addHelpText('after', `
 EXAMPLES:
   $ btca ask --question "How do I create a React component?" --tech react
@@ -122,7 +124,8 @@ EXAMPLES:
     configCommand
       .command('model')
       .description('View or set the AI model and provider configuration')
-      .option('-p, --provider <provider>', 'AI provider (e.g., openai, anthropic)')
+      .addOption(new Option('-p, --provider <provider>', 'AI provider')
+        .choices(['opencode', 'openai', 'anthropic', 'google', 'alibaba']))
       .option('-m, --model <model>', 'AI model name (e.g., gpt-4, claude-3)')
       .addHelpText('after', `
 EXAMPLES:
@@ -155,8 +158,29 @@ EXAMPLES:
       .command('add')
       .description('Add a new repository to the configuration')
       .requiredOption('-n, --name <name>', 'repository name (used as identifier)')
-      .requiredOption('-u, --url <url>', 'repository URL')
-      .option('-b, --branch <branch>', 'branch to use', 'main')
+      .addOption(new Option('-u, --url <url>', 'repository URL')
+        .argParser((value: string) => {
+          try {
+            new URL(value);
+            return value;
+          } catch (error) {
+            throw new Error(`Invalid URL: ${value}`);
+          }
+        })
+        .makeOptionMandatory())
+      .addOption(new Option('-b, --branch <branch>', 'branch to use')
+        .argParser((value: string) => {
+          // Basic git branch name validation
+          if (!/^[a-zA-Z0-9._~:/-]+$/.test(value)) {
+            throw new Error(`Invalid branch name: ${value}. Branch names can only contain letters, numbers, dots, underscores, tildes, forward slashes, and hyphens.`);
+          }
+          // Additional validation: no leading/trailing dots, no double dots, no spaces
+          if (value.startsWith('.') || value.endsWith('.') || value.includes('..') || value.includes(' ')) {
+            throw new Error(`Invalid branch name: ${value}. Branch names cannot start/end with dots, contain double dots, or spaces.`);
+          }
+          return value;
+        })
+        .default('main'))
       .option('--notes <notes>', 'special notes about this repository')
       .addHelpText('after', `
 EXAMPLES:
@@ -218,8 +242,8 @@ EXAMPLES:
         process.exit(1);
       }
 
-      // Set new model
-      const updatedModel = await this.config.updateModel({ provider, model });
+      // Set new model - TypeScript assertion since Commander.js handles validation
+      const updatedModel = await this.config.updateModel({ provider: provider!, model: model! });
       console.log(`Model configuration updated:`);
       console.log(`  Provider: ${updatedModel.provider}`);
       console.log(`  Model: ${updatedModel.model}`);
@@ -258,7 +282,7 @@ EXAMPLES:
       const repo = {
         name,
         url,
-        branch: branch || 'main',
+        branch,
         ...(notes && { specialNotes: notes })
       };
 

@@ -2,13 +2,12 @@ import type { Config as OpenCodeConfig } from '@opencode-ai/sdk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getDocsAgentPrompt } from '../lib/prompts.ts';
-import { ConfigError } from '../lib/errors.ts';
+import { ConfigError, OcError } from '../lib/errors.ts';
 import { cloneRepo, pullRepo } from '../lib/utils/git.ts';
 import { directoryExists, expandHome } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
 import { validateProviderAndModel, withTempOpenCodeClient } from '../lib/utils/validation.ts';
 import { createOpencode } from '@opencode-ai/sdk';
-import { OcError, ConfigError } from '../lib/errors.ts';
 
 const CONFIG_DIRECTORY = '~/.config/btca';
 const CONFIG_FILENAME = 'btca.json';
@@ -66,7 +65,7 @@ const writeConfig = async (config: Config): Promise<void> => {
 
 	try {
 		await fs.writeFile(configPath, JSON.stringify(configToWrite, null, 2));
-	} catch (error) {
+	} catch (error: any) {
 		throw new ConfigError('Invalid config file format', error);
 	}
 };
@@ -203,7 +202,7 @@ throw new Error(`Config file is invalid. Ensure the following fields are correct
 			config,
 			configPath
 		};
-	} catch (error) {
+	} catch (error: any) {
 		throw new ConfigError('Failed to load config', error);
 	}
 };
@@ -252,7 +251,7 @@ export class ConfigService {
 			}
 			if (!suppressLogs) console.log(`Done with ${repo.name}`);
 			await logger.info(`${repo.name} operation completed successfully`);
-		} catch (error) {
+		} catch (error: any) {
 			await logger.error(
 				`Failed to clone/update repo ${repo.name}: ${error instanceof Error ? error.message : String(error)}`
 			);
@@ -302,7 +301,7 @@ export class ConfigService {
 
 			await writeConfig(this.config);
 			await logger.info(`Model configuration updated to ${args.provider}/${args.model}`);
-		} catch (error) {
+		} catch (error: any) {
 			// Revert the config change on validation failure
 			this.config = oldConfig;
 			await logger.error(`Model configuration validation failed: ${error}`);
