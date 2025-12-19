@@ -43,7 +43,7 @@ export const cloneRepo = async (args: {
 		onMessage: undefined,
 		// Add timeout to prevent hanging
 		timeout: {
-			block: true
+			block: GIT_TIMEOUT_MS
 		}
 	};
 
@@ -51,7 +51,8 @@ export const cloneRepo = async (args: {
 		// Set git config after cloning to avoid author issues during future pull operations
 		await setGitConfig(repoDir);
 	} catch (error) {
-		throw new ConfigError('Failed to clone repo', error);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new ConfigError(`Failed to clone repo: ${errorMessage}`, error);
 	}
 };
 
@@ -71,13 +72,14 @@ export const pullRepo = async (args: { repoDir: string; branch: string }): Promi
 			onMessage: undefined,
 			// Add timeout to prevent hanging
 			timeout: {
-				block: true
+				block: GIT_TIMEOUT_MS
 			}
 		};
 
 		await git.pull(pullOptions);
 		await logger.info(`Pull completed for ${repoDir}`);
 	} catch (error) {
-		throw new ConfigError('Failed to pull repo', error);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		throw new ConfigError(`Failed to pull repo: ${errorMessage}`, error);
 	}
 };
