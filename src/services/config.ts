@@ -8,7 +8,7 @@ import { directoryExists, expandHome } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
 import { validateProviderAndModel, withTempOpenCodeClient } from '../lib/utils/validation.ts';
 import { createOpencode } from '@opencode-ai/sdk';
-import { StartupValidationError, ConfigurationChangeError } from '../lib/errors.ts';
+import { OcError, ConfigError } from '../lib/errors.ts';
 
 const CONFIG_DIRECTORY = '~/.config/btca';
 const CONFIG_FILENAME = 'btca.json';
@@ -25,78 +25,9 @@ type Config = {
 	repos: Repo[];
 	model: string;
 	provider: string;
-	sessionTimeoutMinutes: number;
-	maxRetries: number;
-
 	opencodeConfigDir: string;
-	// Network and timing
 	opencodeBasePort: number;
-	requestTimeoutMs: number;
-	sessionInactivityTimeoutMs: number;
-	// Cache settings
-	repoCacheTtlMs: number;
 };
-
-// Repository caching interfaces
-export interface RepoCacheEntry {
-	lastUpdated: number;
-	lastChecked: number;
-	ttl: number; // Time to live in milliseconds
-}
-
-export class RepositoryCache {
-	private cache = new Map<string, RepoCacheEntry>();
-	private defaultTtlMs: number = 15 * 60 * 1000; // 15 minutes default
-
-	constructor(defaultTtlMs?: number) {
-		if (defaultTtlMs !== undefined) {
-			this.defaultTtlMs = defaultTtlMs;
-		}
-	}
-
-	shouldUpdate(repoName: string): boolean {
-		const entry = this.cache.get(repoName);
-		if (!entry) {
-			return true; // Never cached, need to update
-		}
-
-		const now = Date.now();
-		const timeSinceLastCheck = now - entry.lastChecked;
-
-		// Check if cache entry has expired (should re-check remote)
-		// This covers both recent checks with expired content and stale entries
-		return timeSinceLastCheck > entry.ttl;
-	}
-
-	markChecked(repoName: string): void {
-		const now = Date.now();
-		const entry = this.cache.get(repoName) || {
-			lastUpdated: 0,
-			lastChecked: now,
-			ttl: this.defaultTtlMs
-		};
-
-		entry.lastChecked = now;
-		this.cache.set(repoName, entry);
-	}
-
-	markUpdated(repoName: string): void {
-		const now = Date.now();
-		const entry = this.cache.get(repoName) || {
-			lastUpdated: now,
-			lastChecked: now,
-			ttl: this.defaultTtlMs
-		};
-
-		entry.lastUpdated = now;
-		entry.lastChecked = now;
-		this.cache.set(repoName, entry);
-	}
-
-	clear(): void {
-		this.cache.clear();
-	}
-}
 
 const DEFAULT_CONFIG: Config = {
 	reposDirectory: '~/.local/share/btca/repos',
@@ -111,16 +42,8 @@ const DEFAULT_CONFIG: Config = {
 	],
 	model: 'big-pickle',
 	provider: 'opencode',
-	sessionTimeoutMinutes: 10,
-	maxRetries: 3,
-
 	opencodeConfigDir: '~/.config/btca/opencode',
-	// Network and timing
 	opencodeBasePort: 3420,
-	requestTimeoutMs: 10000, // 10 seconds
-	sessionInactivityTimeoutMs: 120000, // 2 minutes
-	// Cache settings
-	repoCacheTtlMs: 15 * 60 * 1000 // 15 minutes
 };
 
 const collapseHome = (pathStr: string): string => {
@@ -239,44 +162,19 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 				);
 			const hasValidModel = typeof parsed.model === 'string';
 			const hasValidProvider = typeof parsed.provider === 'string';
-			const hasValidSessionTimeout =
-				parsed.sessionTimeoutMinutes === undefined ||
-				(typeof parsed.sessionTimeoutMinutes === 'number' && parsed.sessionTimeoutMinutes > 0);
-			const hasValidMaxRetries =
-				parsed.maxRetries === undefined ||
-				(typeof parsed.maxRetries === 'number' && parsed.maxRetries >= 0);
-
 			const hasValidOpenCodeConfigDir =
 				parsed.opencodeConfigDir === undefined || typeof parsed.opencodeConfigDir === 'string';
 			const hasValidOpenCodeBasePort =
 				parsed.opencodeBasePort === undefined ||
 				(typeof parsed.opencodeBasePort === 'number' && parsed.opencodeBasePort > 0);
-			
-			const hasValidRequestTimeout =
-				parsed.requestTimeoutMs === undefined ||
-				(typeof parsed.requestTimeoutMs === 'number' && parsed.requestTimeoutMs > 0);
-
-			const hasValidInactivityTimeout =
-				parsed.sessionInactivityTimeoutMs === undefined ||
-				(typeof parsed.sessionInactivityTimeoutMs === 'number' &&
-					parsed.sessionInactivityTimeoutMs > 0);
-			const hasValidRepoCacheTtl =
-				parsed.repoCacheTtlMs === undefined ||
-				(typeof parsed.repoCacheTtlMs === 'number' && parsed.repoCacheTtlMs > 0);
 
 			const validationChecks = [
 				hasValidReposDirectory,
 				hasValidReposArray,
 				hasValidModel,
 				hasValidProvider,
-				hasValidSessionTimeout,
-				hasValidMaxRetries,
-
 				hasValidOpenCodeConfigDir,
-				hasValidOpenCodeBasePort,
-				hasValidRequestTimeout,
-				hasValidInactivityTimeout,
-				hasValidRepoCacheTtl
+				hasValidOpenCodeBasePort
 			];
 
 			if (validationChecks.some((check) => !check)) {
@@ -285,14 +183,8 @@ throw new Error(`Config file is invalid. Ensure the following fields are correct
  - \`repos\` (array of objects with \`name\`, \`url\`, \`branch\`)
  - \`model\` (string)
  - \`provider\` (string)
- - \`sessionTimeoutMinutes\` (positive number, optional)
- - \`maxRetries\` (non-negative number, optional)
-
  - \`opencodeConfigDir\` (string, optional)
- - \`opencodeBasePort\` (positive number, optional)
- - \`requestTimeoutMs\` (positive number, optional)
- - \`sessionInactivityTimeoutMs\` (positive number, optional)
- - \`repoCacheTtlMs\` (positive number, optional)`);
+ - \`opencodeBasePort\` (positive number, optional)`);
 			}
 			const reposDir = expandHome(parsed.reposDirectory);
 			config = {
@@ -300,16 +192,8 @@ throw new Error(`Config file is invalid. Ensure the following fields are correct
 				repos: parsed.repos,
 				model: parsed.model,
 				provider: parsed.provider,
-				sessionTimeoutMinutes: parsed.sessionTimeoutMinutes || 10,
-				maxRetries: parsed.maxRetries ?? 3,
-
 				opencodeConfigDir: parsed.opencodeConfigDir ?? expandHome('~/.config/btca/opencode'),
-				// Network and timing
-				opencodeBasePort: parsed.opencodeBasePort ?? 3420,
-				requestTimeoutMs: parsed.requestTimeoutMs ?? 10000,
-				sessionInactivityTimeoutMs: parsed.sessionInactivityTimeoutMs ?? 120000,
-				// Cache settings
-				repoCacheTtlMs: parsed.repoCacheTtlMs ?? 15 * 60 * 1000
+				opencodeBasePort: parsed.opencodeBasePort ?? 3420
 			};
 		}
 		// Apply environment variable overrides
@@ -327,7 +211,6 @@ throw new Error(`Config file is invalid. Ensure the following fields are correct
 export class ConfigService {
 	private config!: Config;
 	private configPath!: string;
-	private repositoryCache!: RepositoryCache;
 
 	constructor() {}
 
@@ -335,9 +218,6 @@ export class ConfigService {
 		const loaded = await onStartLoadConfig();
 		this.config = loaded.config;
 		this.configPath = loaded.configPath;
-
-		// Initialize repository cache with configurable TTL
-		this.repositoryCache = new RepositoryCache(this.config.repoCacheTtlMs);
 		await logger.info(`Config loaded from ${this.configPath}`);
 	}
 
@@ -357,18 +237,6 @@ export class ConfigService {
 		const branch = repo.branch ?? 'main';
 		const suppressLogs = options.suppressLogs;
 
-		// Check if repository needs updating based on cache
-		if (!this.getRepositoryCache().shouldUpdate(repoName)) {
-			if (!suppressLogs) {
-				console.log(`Using cached repository for ${repo.name} (recently updated)`);
-			}
-			await logger.info(`[CACHE] Repository cache hit for ${repo.name} - skipping update`);
-			return repo;
-		}
-
-		// Mark as checked to prevent redundant checks
-		this.getRepositoryCache().markChecked(repoName);
-
 		try {
 			const exists = await directoryExists(repoDir);
 			if (exists) {
@@ -377,14 +245,10 @@ export class ConfigService {
 					`Pulling latest changes for ${repo.name} from ${repo.url} (branch: ${branch})`
 				);
 				await pullRepo({ repoDir, branch });
-				// Mark as updated after successful pull
-				this.getRepositoryCache().markUpdated(repoName);
 			} else {
 				if (!suppressLogs) console.log(`Cloning ${repo.name}...`);
 				await logger.info(`Cloning ${repo.name} from ${repo.url} (branch: ${branch})`);
 				await cloneRepo({ repoDir, url: repo.url, branch });
-				// Mark as updated after successful clone
-				this.getRepositoryCache().markUpdated(repoName);
 			}
 			if (!suppressLogs) console.log(`Done with ${repo.name}`);
 			await logger.info(`${repo.name} operation completed successfully`);
@@ -442,7 +306,7 @@ export class ConfigService {
 			// Revert the config change on validation failure
 			this.config = oldConfig;
 			await logger.error(`Model configuration validation failed: ${error}`);
-			throw new ConfigurationChangeError(
+			throw new ConfigError(
 				`Configuration validation failed for ${args.provider}/${args.model}`,
 				error
 			);
@@ -474,38 +338,7 @@ export class ConfigService {
 		return this.config.reposDirectory;
 	}
 
-	getSessionTimeout(): number {
-		return this.config.sessionTimeoutMinutes;
-	}
-
-	getMaxRetries(): number {
-		return this.config.maxRetries;
-	}
-
-	private getRepositoryCache(): RepositoryCache {
-		if (!this.repositoryCache) {
-			throw new ConfigError('ConfigService not initialized - call init() first');
-		}
-		return this.repositoryCache;
-	}
-
-	// Network and timing
 	getOpenCodeBasePort(): number {
 		return this.config.opencodeBasePort;
-	}
-
-	
-
-	getRequestTimeoutMs(): number {
-		return this.config.requestTimeoutMs;
-	}
-
-	getSessionInactivityTimeoutMs(): number {
-		return this.config.sessionInactivityTimeoutMs;
-	}
-
-	// Cache settings
-	getRepoCacheTtlMs(): number {
-		return this.config.repoCacheTtlMs;
 	}
 }
