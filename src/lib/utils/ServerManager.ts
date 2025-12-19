@@ -52,7 +52,7 @@ export class ServerManager {
   }
   
   private async cleanupStaleServers(): Promise<void> {
-    const staleThreshold = 30 * 60 * 1000; // 30 minutes
+    const staleThreshold = 10 * 60 * 1000; // 10 minutes
     const now = Date.now();
     
     for (const [key, entry] of this.activeServers.entries()) {

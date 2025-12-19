@@ -1,12 +1,10 @@
 import {
-  createOpencode,
   createOpencodeClient,
   OpencodeClient,
   type Event,
   type Config as OpenCodeConfig
 } from '@opencode-ai/sdk';
 import { ConfigService } from './config.ts';
-import { ServerManager } from '../lib/utils/ServerManager.ts';
 import path from 'node:path';
 import { OcError, InvalidTechError } from '../lib/errors.ts';
 import { findSimilarStrings } from '../lib/utils/fuzzy-matcher.ts';
@@ -49,13 +47,11 @@ export type { Event as OcEvent };
 export class OcService {
   private configService: ConfigService;
   private eventProcessor: EventProcessor;
-  private serverManager: ServerManager;
+  private openCodeInstance: { client: OpencodeClient; server: { close: () => void; url: string } };
 
-
-
-  constructor(configService: ConfigService, serverManager: ServerManager) {
+  constructor(configService: ConfigService, openCodeInstance: { client: OpencodeClient; server: { close: () => void; url: string } }) {
     this.configService = configService;
-    this.serverManager = serverManager;
+    this.openCodeInstance = openCodeInstance;
 
     // Initialize event processing system
     this.eventProcessor = new EventProcessor();
@@ -98,73 +94,20 @@ export class OcService {
     }
   }
 
-  private async getOpencodeInstance(tech: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
-    const serverKey = `${tech}-${Date.now()}`;
-    return await this.getOpencodeInstanceWithKey(tech, serverKey);
-  }
-  
-  private async getOpencodeInstanceWithKey(tech: string, serverKey: string): Promise<{ client: OpencodeClient; server: { close: () => void; url: string } }> {
-    const configObject = await this.configService.getOpenCodeConfig({ repoName: tech });
+  private async createDirectoryClient(tech: string): Promise<OpencodeClient> {
+    const repoPath = path.join(this.configService.getReposDirectory(), tech);
+    const clientWithDirectory = createOpencodeClient({
+      baseUrl: this.openCodeInstance.server.url,
+      directory: repoPath
+    });
 
-    if (!configObject) {
-      // Get available techs and suggest similar ones if tech is not found
-      const allRepos = this.configService.getRepos();
-      const availableTechs = allRepos.map(repo => repo.name);
-      const suggestedTechs = findSimilarStrings(tech, availableTechs, 3); // Increase threshold to allow more suggestions
-
-      throw new InvalidTechError(tech, availableTechs, suggestedTechs);
-    }
-
-    // Create OpenCode instance through ServerManager
-    let port = this.configService.getOpenCodeBasePort();
-    const maxPort = port + this.configService.getOpenCodePortRange() - 1;
-    let lastError: any = null;
-    
-    while (true) {
-      try {
-        const originalConfigDir = process.env.OPENCODE_CONFIG_DIR;
-        process.env.OPENCODE_CONFIG_DIR = this.configService.getOpenCodeConfigDir();
-
-        try {
-          await logger.info(`Creating OpenCode instance for ${tech} on port ${port}`);
-          
-          // Use ServerManager to create the server with the specific key
-          const result = await this.serverManager.createServer(serverKey, {
-            port
-          });
-
-          // Create a new client with the directory header set
-          const repoPath = path.join(this.configService.getReposDirectory(), tech);
-          const clientWithDirectory = createOpencodeClient({
-            baseUrl: result.server.url,
-            directory: repoPath
-          });
-
-          await logger.info(`Created client with directory: ${repoPath}`);
-
-          return { client: clientWithDirectory, server: result.server };
-        } finally {
-          if (originalConfigDir !== undefined) {
-            process.env.OPENCODE_CONFIG_DIR = originalConfigDir;
-          } else {
-            delete process.env.OPENCODE_CONFIG_DIR;
-          }
-        }
-      } catch (err) {
-        lastError = err;
-        port++;
-        if (port > maxPort) {
-          throw new OcError('RESOURCE EXHAUSTION: No available ports for new instance', lastError);
-        }
-      }
-    }
+    await logger.info(`Created directory client for ${tech} with directory: ${repoPath}`);
+    return clientWithDirectory;
   }
 
   async askQuestion(args: { question: string; tech: string }): Promise<void> {
     const { question, tech } = args;
-    let result!: { client: OpencodeClient; server: { close: () => void; url: string } };
     let sessionID: string | null = null;
-    let serverKey: string | null = null;
 
     await logger.info(`Asking question about ${tech}: "${question}"`);
 
@@ -184,26 +127,14 @@ export class OcService {
 
     return await (async () => {
       try {
-        // Generate a server key that we can use to close it later
-        serverKey = `${tech}-${Date.now()}`;
-        // Override the getOpencodeInstance to use the specific server key
-        result = await this.getOpencodeInstanceWithKey(tech, serverKey);
-
-        // Check if the provider is authenticated
-        const providerList = await result.client.provider.list();
-        if (providerList.error || !providerList.data) {
-          throw new OcError('Failed to list providers', providerList.error);
-        }
-        const { connected } = providerList.data;
-        if (!connected.includes(this.configService.rawConfig().provider)) {
-          throw new OcError(`Provider "${this.configService.rawConfig().provider}" is not authenticated. Run "btca auth login --provider ${this.configService.rawConfig().provider}" to authenticate.`);
-        }
+        // Create directory-specific client using global instance
+        const clientWithDirectory = await this.createDirectoryClient(tech);
 
         // Create new session
         const repoPath = path.join(this.configService.getReposDirectory(), tech);
         await logger.info(`Creating session for ${tech} with working directory: ${repoPath}`);
 
-        const session = await result.client.session.create({
+        const session = await clientWithDirectory.session.create({
           query: {
             directory: repoPath
           }
@@ -218,6 +149,94 @@ export class OcService {
         await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
 
 
+
+        
+
+
+        // Create event handlers for processing
+        const messageHandler = new MessageEventHandler({
+          outputStream: process.stdout,
+          enableFormatting: true,
+        });
+        const messageUpdatedHandler = new MessageUpdatedEventHandler({
+          outputStream: process.stdout,
+          enableFormatting: true,
+        });
+        const sessionStatusHandler = new SessionStatusEventHandler({
+          enableStatusLogging: true,
+          outputStream: process.stdout,
+        });
+        const serverHeartbeatHandler = new ServerHeartbeatEventHandler({
+          enableHeartbeatLogging: false, // Keep disabled by default to reduce noise
+          heartbeatInterval: 50, // Log every 50 heartbeats
+          outputStream: process.stdout,
+        });
+        const sessionHandler = new SessionEventHandler({
+          onSessionComplete: async (sessionId) => {
+            await logger.info(`Session ${sessionId} completed`);
+          }
+        });
+        const toolHandler = new ToolEventHandler({
+          outputStream: process.stdout,
+          enableVisibility: true,
+        });
+
+        // Create an event processor for this session
+        const processor = new EventProcessor();
+        processor.registerHandler('message-handler', messageHandler);
+        processor.registerHandler('message-updated-handler', messageUpdatedHandler);
+        processor.registerHandler('session-status-handler', sessionStatusHandler);
+        processor.registerHandler('server-heartbeat-handler', serverHeartbeatHandler);
+        processor.registerHandler('session-handler', sessionHandler);
+        processor.registerHandler('tool-handler', toolHandler);
+
+        // Fire the prompt asynchronously (don't await - let it process in background)
+        await logger.info(`Sending prompt to OpenCode for session ${sessionID} with provider ${this.configService.rawConfig().provider} and model ${this.configService.rawConfig().model}`);
+        clientWithDirectory.session.prompt({
+          path: { id: sessionID },
+          body: {
+            model: {
+              providerID: this.configService.rawConfig().provider,
+              modelID: this.configService.rawConfig().model
+            },
+            parts: [{ type: 'text', text: question }]
+          }
+        }).catch(async (err) => {
+          const promptError = new OcError(String(err), err);
+          await logger.error(`Prompt error for ${tech} (session ${sessionID}): ${err}`);
+          await logger.error(`Prompt error stack: ${err instanceof Error ? err.stack : String(err)}`);
+          throw promptError;
+        });
+
+        // Process events through our event processing system with timeout
+        const timeoutMs = this.configService.getSessionInactivityTimeoutMs();
+        let timeoutHandle: NodeJS.Timeout | null = null;
+        let timeoutReject: ((reason: Error) => void) | null = null;
+
+        const resetTimeout = () => {
+          if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+          }
+          timeoutHandle = setTimeout(() => {
+            if (timeoutReject) {
+              timeoutReject(new OcError(`Session timed out after ${timeoutMs / 1000} seconds of inactivity`));
+            }
+          }, timeoutMs);
+        };
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutReject = reject;
+          // Don't start timer yet, wait until we subscribe or prompt
+        });
+
+        // Get the raw event stream from the client with heartbeat detection
+        const events = await clientWithDirectory.event.subscribe({
+          onSseEvent: () => {
+            resetTimeout(); // Reset on ANY event (data, ping, etc.)
+          }
+        });
+
+        resetTimeout(); // Start the timer now that we're listening
 
         // Create a filtered event stream that only includes events for this session
         const self = this; // Capture this for use in generator
@@ -260,93 +279,6 @@ export class OcService {
           }
         };
 
-
-        // Create event handlers for processing
-        const messageHandler = new MessageEventHandler({
-          outputStream: process.stdout,
-          enableFormatting: true,
-        });
-        const messageUpdatedHandler = new MessageUpdatedEventHandler({
-          outputStream: process.stdout,
-          enableFormatting: true,
-        });
-        const sessionStatusHandler = new SessionStatusEventHandler({
-          enableStatusLogging: true,
-          outputStream: process.stdout,
-        });
-        const serverHeartbeatHandler = new ServerHeartbeatEventHandler({
-          enableHeartbeatLogging: false, // Keep disabled by default to reduce noise
-          heartbeatInterval: 50, // Log every 50 heartbeats
-          outputStream: process.stdout,
-        });
-        const sessionHandler = new SessionEventHandler({
-          onSessionComplete: async (sessionId) => {
-            await logger.info(`Session ${sessionId} completed`);
-          }
-        });
-        const toolHandler = new ToolEventHandler({
-          outputStream: process.stdout,
-          enableVisibility: true,
-        });
-
-        // Create an event processor for this session
-        const processor = new EventProcessor();
-        processor.registerHandler('message-handler', messageHandler);
-        processor.registerHandler('message-updated-handler', messageUpdatedHandler);
-        processor.registerHandler('session-status-handler', sessionStatusHandler);
-        processor.registerHandler('server-heartbeat-handler', serverHeartbeatHandler);
-        processor.registerHandler('session-handler', sessionHandler);
-        processor.registerHandler('tool-handler', toolHandler);
-
-        // Fire the prompt asynchronously (don't await - let it process in background)
-        await logger.info(`Sending prompt to OpenCode for session ${sessionID} with provider ${this.configService.rawConfig().provider} and model ${this.configService.rawConfig().model}`);
-        result.client.session.prompt({
-          path: { id: sessionID },
-          body: {
-            model: {
-              providerID: this.configService.rawConfig().provider,
-              modelID: this.configService.rawConfig().model
-            },
-            parts: [{ type: 'text', text: question }]
-          }
-        }).catch(async (err) => {
-          const promptError = new OcError(String(err), err);
-          await logger.error(`Prompt error for ${tech} (session ${sessionID}): ${err}`);
-          await logger.error(`Prompt error stack: ${err instanceof Error ? err.stack : String(err)}`);
-          throw promptError;
-        });
-
-        // Process events through our event processing system with timeout
-        const timeoutMs = this.configService.getSessionInactivityTimeoutMs();
-        let timeoutHandle: NodeJS.Timeout | null = null;
-        let timeoutReject: ((reason: Error) => void) | null = null;
-
-        const resetTimeout = () => {
-          if (timeoutHandle) {
-            clearTimeout(timeoutHandle);
-          }
-          timeoutHandle = setTimeout(() => {
-            if (timeoutReject) {
-              timeoutReject(new OcError(`Session timed out after ${timeoutMs / 1000} seconds of inactivity`));
-            }
-          }, timeoutMs);
-        };
-
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutReject = reject;
-          // Don't start timer yet, wait until we subscribe or prompt
-        });
-
-        // Get the raw event stream from the client with heartbeat detection
-        const events = await result!.client.event.subscribe({
-          onSseEvent: () => {
-            resetTimeout(); // Reset on ANY event (data, ping, etc.)
-          }
-        });
-
-        resetTimeout(); // Start the timer now that we're listening
-
-        // Create a filtered event stream that only includes events for this session
         try {
           await Promise.race([
             (async () => {
@@ -360,7 +292,7 @@ export class OcService {
         } catch (error) {
           // On timeout or session error, abort the session
           try {
-            await result.client.session.abort({ path: { id: sessionID } });
+            await clientWithDirectory.session.abort({ path: { id: sessionID } });
             await logger.info(`Aborted session ${sessionID} due to timeout or error`);
           } catch (abortError) {
             await logger.warn(`Failed to abort session ${sessionID}: ${abortError}`);
@@ -371,11 +303,8 @@ export class OcService {
         await logger.error(`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
       } finally {
-        // Always close the server after the session completes (success or error)
-        if (serverKey) {
-          await logger.info(`Closing server for ${serverKey} after session completion`);
-          await this.serverManager.closeServer(serverKey);
-        }
+        // No server cleanup needed with single global instance
+        await logger.info('Session completed - global instance remains active');
       }
     })();
   }
