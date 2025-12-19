@@ -99,18 +99,35 @@ export class OcService {
 
       // Process events directly
       for await (const event of eventsSubscription.stream) {
+        // Identify session ID from various possible locations in event properties
+        const props = event.properties as any;
+        const eventSessionID = 
+          props.sessionID || 
+          props.session?.id ||
+          props.part?.sessionID ||
+          props.message?.sessionID ||
+          props.info?.sessionID ||
+          props.info?.id;
+
+        // Filter events for our session if we can identify the session
+        if (eventSessionID && eventSessionID !== sessionID) {
+          continue;
+        }
+
         // Handle session completion
-        if ((event.type === 'session.status.updated' && 
-             event.properties.sessionID === sessionID &&
-             (event.properties as any).status?.type === 'idle') ||
-            (event.type === 'session.idle' && event.properties.sessionID === sessionID)) {
-          await logger.info(`Session ${sessionID} completed for ${tech}`);
+        const status = props.status;
+        const statusType = typeof status === 'object' ? status?.type : status;
+        
+        if ((event.type === 'session.status.updated' && statusType === 'idle') ||
+            (event.type === 'session.status' && statusType === 'idle') ||
+            (event.type === 'session.idle')) {
+          await logger.info(`Session ${sessionID} reached idle state`);
           break;
         }
 
+
         // Handle session errors
-        if (event.type === 'session.error' && 
-            event.properties.sessionID === sessionID) {
+        if (event.type === 'session.error') {
           const errorProps = event.properties as { error?: { message?: string } };
           const errorMsg = `Session ${sessionID} errored: ${errorProps.error?.message || 'Unknown error'}`;
           await logger.error(errorMsg);
