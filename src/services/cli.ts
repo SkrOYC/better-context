@@ -171,12 +171,12 @@ EXAMPLES:
       .addOption(new Option('-b, --branch <branch>', 'branch to use')
         .argParser((value: string) => {
           // Basic git branch name validation
-          if (!/^[a-zA-Z0-9._~:/-]+$/.test(value)) {
-            throw new Error(`Invalid branch name: ${value}. Branch names can only contain letters, numbers, dots, underscores, tildes, forward slashes, and hyphens.`);
+          if (!/^[a-zA-Z0-9._/-]+$/.test(value)) {
+            throw new Error(`Invalid branch name: ${value}. Branch names can only contain letters, numbers, dots, underscores, forward slashes, and hyphens.`);
           }
-          // Additional validation: no leading/trailing dots, no double dots, no spaces
-          if (value.startsWith('.') || value.endsWith('.') || value.includes('..') || value.includes(' ')) {
-            throw new Error(`Invalid branch name: ${value}. Branch names cannot start/end with dots, contain double dots, or spaces.`);
+          // Additional validation: no leading/trailing dots or slashes, no double dots or slashes
+          if (value.startsWith('.') || value.endsWith('.') || value.includes('..') || value.startsWith('/') || value.endsWith('/') || value.includes('//')) {
+            throw new Error(`Invalid branch name: ${value}. Branch names cannot start/end with dots or slashes, or contain double dots or slashes.`);
           }
           return value;
         })
@@ -242,7 +242,7 @@ EXAMPLES:
         process.exit(1);
       }
 
-      // Set new model - TypeScript assertion since Commander.js handles validation
+      // Set new model - TypeScript assertion since Commander.js validation ensures both are provided
       const updatedModel = await this.config.updateModel({ provider: provider!, model: model! });
       console.log(`Model configuration updated:`);
       console.log(`  Provider: ${updatedModel.provider}`);

@@ -65,7 +65,7 @@ const writeConfig = async (config: Config): Promise<void> => {
 
 	try {
 		await fs.writeFile(configPath, JSON.stringify(configToWrite, null, 2));
-	} catch (error: any) {
+	} catch (error) {
 		throw new ConfigError('Invalid config file format', error);
 	}
 };
@@ -202,7 +202,7 @@ throw new Error(`Config file is invalid. Ensure the following fields are correct
 			config,
 			configPath
 		};
-	} catch (error: any) {
+	} catch (error) {
 		throw new ConfigError('Failed to load config', error);
 	}
 };
@@ -251,7 +251,7 @@ export class ConfigService {
 			}
 			if (!suppressLogs) console.log(`Done with ${repo.name}`);
 			await logger.info(`${repo.name} operation completed successfully`);
-		} catch (error: any) {
+		} catch (error) {
 			await logger.error(
 				`Failed to clone/update repo ${repo.name}: ${error instanceof Error ? error.message : String(error)}`
 			);
@@ -301,7 +301,7 @@ export class ConfigService {
 
 			await writeConfig(this.config);
 			await logger.info(`Model configuration updated to ${args.provider}/${args.model}`);
-		} catch (error: any) {
+		} catch (error) {
 			// Revert the config change on validation failure
 			this.config = oldConfig;
 			await logger.error(`Model configuration validation failed: ${error}`);
