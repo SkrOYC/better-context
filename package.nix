@@ -44,12 +44,16 @@ let
     
     nativeBuildInputs = [ bun git ];
     
-    # Allow network access for dependency installation during build
-    __impureHostDeps = [ "/etc/resolv.conf" ];
-    
-    buildPhase = ''
+    # Configure build environment
+    preBuild = ''
       export HOME=$(mktemp -d)
       export SSL_CERT_FILE=${cacert}/etc/ssl/certs/ca-bundle.crt
+      export NODE_ENV=production
+      export NPM_CONFIG_REGISTRY="https://registry.npmjs.org/"
+      export BUN_CONFIG_REGISTRY_URL="https://registry.npmjs.org/"
+    '';
+    
+    buildPhase = ''
       bun install --frozen-lockfile
       bun run build
     '';
@@ -102,8 +106,9 @@ EOF
 
 in
 
-# Try to use pre-built binary if available, fallback to source build
-if platformConfig != null && platformConfig.hash != "" then
+# Try to use pre-built binary if available, fallback to source build  
+# For now, we need to build from source since we don't have releases yet
+if false && platformConfig != null && platformConfig.hash != "" then
   stdenv.mkDerivation {
     pname = "better-context";
     inherit version;
