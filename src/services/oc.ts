@@ -217,8 +217,7 @@ export class OcService {
         sessionID = session.data.id;
         await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
 
-        // Get the raw event stream from the client
-        const events = await result!.client.event.subscribe();
+
 
         // Create a filtered event stream that only includes events for this session
         const self = this; // Capture this for use in generator
@@ -318,17 +317,41 @@ export class OcService {
         });
 
         // Process events through our event processing system with timeout
-        const timeoutMs = 2 * 60 * 1000; // 2 minutes
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => {
-            reject(new OcError(`Session timed out after 2 minutes of no events`));
+        const timeoutMs = this.configService.getSessionInactivityTimeoutMs();
+        let timeoutHandle: NodeJS.Timeout | null = null;
+        let timeoutReject: ((reason: Error) => void) | null = null;
+
+        const resetTimeout = () => {
+          if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+          }
+          timeoutHandle = setTimeout(() => {
+            if (timeoutReject) {
+              timeoutReject(new OcError(`Session timed out after ${timeoutMs / 1000} seconds of inactivity`));
+            }
           }, timeoutMs);
+        };
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutReject = reject;
+          // Don't start timer yet, wait until we subscribe or prompt
         });
 
+        // Get the raw event stream from the client with heartbeat detection
+        const events = await result!.client.event.subscribe({
+          onSseEvent: () => {
+            resetTimeout(); // Reset on ANY event (data, ping, etc.)
+          }
+        });
+
+        resetTimeout(); // Start the timer now that we're listening
+
+        // Create a filtered event stream that only includes events for this session
         try {
           await Promise.race([
             (async () => {
               for await (const event of sessionFilteredEvents) {
+                resetTimeout(); // Reset timeout on data events too (redundant but safe)
                 await processor.processEvent(event);
               }
             })(),

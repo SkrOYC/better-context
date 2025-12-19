@@ -35,6 +35,7 @@ type Config = {
   opencodeBasePort: number;
   opencodePortRange: number;
   requestTimeoutMs: number;
+  sessionInactivityTimeoutMs: number;
   // Cache settings
   repoCacheTtlMs: number;
 };
@@ -123,6 +124,7 @@ const DEFAULT_CONFIG: Config = {
   opencodeBasePort: 3420,
   opencodePortRange: 5, // 3420-3424
   requestTimeoutMs: 10000, // 10 seconds
+  sessionInactivityTimeoutMs: 120000, // 2 minutes
    // Cache settings
    repoCacheTtlMs: 15 * 60 * 1000, // 15 minutes
 };
@@ -248,6 +250,9 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
           (typeof parsed.opencodePortRange === 'number' && parsed.opencodePortRange > 0);
         const hasValidRequestTimeout = parsed.requestTimeoutMs === undefined ||
           (typeof parsed.requestTimeoutMs === 'number' && parsed.requestTimeoutMs > 0);
+
+        const hasValidInactivityTimeout = parsed.sessionInactivityTimeoutMs === undefined ||
+          (typeof parsed.sessionInactivityTimeoutMs === 'number' && parsed.sessionInactivityTimeoutMs > 0);
         const hasValidRepoCacheTtl = parsed.repoCacheTtlMs === undefined ||
           (typeof parsed.repoCacheTtlMs === 'number' && parsed.repoCacheTtlMs > 0);
 
@@ -264,6 +269,7 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
           hasValidOpenCodeBasePort,
           hasValidOpenCodePortRange,
           hasValidRequestTimeout,
+          hasValidInactivityTimeout,
           hasValidRepoCacheTtl
         ];
 
@@ -280,6 +286,7 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
 - \`opencodeBasePort\` (positive number, optional)
 - \`opencodePortRange\` (positive number, optional)
 - \`requestTimeoutMs\` (positive number, optional)
+- \`sessionInactivityTimeoutMs\` (positive number, optional)
 - \`repoCacheTtlMs\` (positive number, optional)`);
         }
       const reposDir = expandHome(parsed.reposDirectory);
@@ -296,6 +303,7 @@ const onStartLoadConfig = async (): Promise<{ config: Config; configPath: string
           opencodeBasePort: parsed.opencodeBasePort ?? 3420,
           opencodePortRange: parsed.opencodePortRange ?? 5,
           requestTimeoutMs: parsed.requestTimeoutMs ?? 10000,
+          sessionInactivityTimeoutMs: parsed.sessionInactivityTimeoutMs ?? 120000,
           // Cache settings
           repoCacheTtlMs: parsed.repoCacheTtlMs ?? (15 * 60 * 1000)
         };
@@ -487,6 +495,10 @@ export class ConfigService {
 
   getRequestTimeoutMs(): number {
     return this.config.requestTimeoutMs;
+  }
+
+  getSessionInactivityTimeoutMs(): number {
+    return this.config.sessionInactivityTimeoutMs;
   }
 
   // Cache settings
