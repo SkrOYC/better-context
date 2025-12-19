@@ -2,13 +2,12 @@ import type { Config as OpenCodeConfig } from '@opencode-ai/sdk';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getDocsAgentPrompt } from '../lib/prompts.ts';
-import { ConfigError } from '../lib/errors.ts';
+import { ConfigError, OcError } from '../lib/errors.ts';
 import { cloneRepo, pullRepo } from '../lib/utils/git.ts';
 import { directoryExists, expandHome } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
 import { validateProviderAndModel, withTempOpenCodeClient } from '../lib/utils/validation.ts';
 import { createOpencode } from '@opencode-ai/sdk';
-import { OcError, ConfigError } from '../lib/errors.ts';
 
 const CONFIG_DIRECTORY = '~/.config/btca';
 const CONFIG_FILENAME = 'btca.json';
