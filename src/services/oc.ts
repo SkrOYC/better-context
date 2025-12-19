@@ -83,6 +83,7 @@ export class OcService {
 
       // Get the event stream
       const eventsSubscription = await clientWithDirectory.event.subscribe({});
+      const writtenLengths = new Map<string, number>();
 
       // Send prompt, but don't await promise here. Process events concurrently.
       const promptPromise = clientWithDirectory.session.prompt({
@@ -98,10 +99,11 @@ export class OcService {
 
       // Process events directly
       for await (const event of eventsSubscription.stream) {
-        // Handle session completion (only break when status is idle, not any status update)
-        if (event.type === 'session.status.updated' && 
-            event.properties.sessionID === sessionID &&
-            (event.properties as any).status?.type === 'idle') {
+        // Handle session completion
+        if ((event.type === 'session.status.updated' && 
+             event.properties.sessionID === sessionID &&
+             (event.properties as any).status?.type === 'idle') ||
+            (event.type === 'session.idle' && event.properties.sessionID === sessionID)) {
           await logger.info(`Session ${sessionID} completed for ${tech}`);
           break;
         }
@@ -119,7 +121,16 @@ export class OcService {
         if (event.type === 'message.part.updated' && 
             (event.properties.part as any).type === 'text' &&
             (event.properties.part as any).messageID) {
-          process.stdout.write((event.properties.part as any).text);
+          const part = event.properties.part as any;
+          const partID = `${part.messageID}-${part.index ?? 0}`;
+          const fullText = part.text || '';
+          const alreadyWritten = writtenLengths.get(partID) || 0;
+
+          if (fullText.length > alreadyWritten) {
+            const delta = fullText.slice(alreadyWritten);
+            process.stdout.write(delta);
+            writtenLengths.set(partID, fullText.length);
+          }
         }
       }
 

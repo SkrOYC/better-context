@@ -3,6 +3,7 @@ import { OcService } from './services/oc.ts';
 import { ConfigService } from './services/config.ts';
 import { logger } from './lib/utils/logger.ts';
 import { createOpencode, OpencodeClient } from '@opencode-ai/sdk';
+import { CommanderError } from 'commander';
 
 // Global variable to hold the OpenCode server instance for cleanup
 let openCodeInstance: { client: OpencodeClient; server: { close: () => void; url: string } } | null = null;
@@ -116,7 +117,14 @@ async function main(): Promise<void> {
 
     // Explicitly call cleanup at the end of normal execution
     await cleanup();
-  } catch (error) {
+  } catch (error: any) {
+    // Handle Commander exit overrides (help, version, etc.)
+    if (error instanceof CommanderError) {
+      // Commander has already printed the error/help message
+      await cleanup(error.exitCode);
+      return;
+    }
+
     await logger.error(`Application error: ${error}`);
     await cleanup(1);
   }
