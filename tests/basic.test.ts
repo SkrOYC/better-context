@@ -2,7 +2,7 @@ import { describe, it, expect } from 'bun:test';
 import { ConfigService } from '../src/services/config.ts';
 
 describe('Basic Configuration', () => {
-  it('should have default session timeout', () => {
+  it('should initialize with default values', () => {
     const config = new ConfigService();
     // Set minimal required config for testing
     (config as any).config = {
@@ -10,23 +10,29 @@ describe('Basic Configuration', () => {
       repos: [],
       model: 'test',
       provider: 'test',
-      sessionTimeoutMinutes: 30
+      opencodeConfigDir: '/tmp/opencode',
+      opencodeBasePort: 3420
     };
 
-    expect(config.getSessionTimeout()).toBe(30);
+    expect(config.getReposDirectory()).toBe('/tmp/test');
+    expect(config.getModel()).toEqual({ provider: 'test', model: 'test' });
+    expect(config.getOpenCodeBasePort()).toBe(3420);
   });
 
-  it('should handle custom session timeout', () => {
+  it('should handle custom values', () => {
     const config = new ConfigService();
     // Set minimal required config for testing
     (config as any).config = {
-      reposDirectory: '/tmp/test',
+      reposDirectory: '/custom/path',
       repos: [],
-      model: 'test',
-      provider: 'test',
-      sessionTimeoutMinutes: 60
+      model: 'gpt-4',
+      provider: 'openai',
+      opencodeConfigDir: '/custom/opencode',
+      opencodeBasePort: 4000
     };
 
-    expect(config.getSessionTimeout()).toBe(60);
+    expect(config.getReposDirectory()).toBe('/custom/path');
+    expect(config.getModel()).toEqual({ provider: 'openai', model: 'gpt-4' });
+    expect(config.getOpenCodeBasePort()).toBe(4000);
   });
 });

@@ -3,7 +3,7 @@ import type { ConfigService } from "../../services/config";
 import {
   InvalidProviderError,
   InvalidModelError,
-  ProviderNotConnectedError,
+  OcError,
 } from "../errors";
 
 export const validateProviderAndModel = async (
@@ -34,7 +34,7 @@ export const validateProviderAndModel = async (
 
   // Check if provider is connected (has valid auth)
   if (!connected.includes(providerId)) {
-    throw new ProviderNotConnectedError(providerId, connected);
+    throw new OcError(`Provider "${providerId}" is not connected. Connected providers: ${connected.join(', ')}. Run "opencode auth" to configure provider credentials.`);
   }
 
   // Check if model exists for this provider
