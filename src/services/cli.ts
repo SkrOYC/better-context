@@ -8,6 +8,7 @@ import { createOpencode } from '@opencode-ai/sdk';
 import { InvalidTechError, InvalidProviderError, InvalidModelError } from '../lib/errors.ts';
 import { directoryExists } from '../lib/utils/files.ts';
 import { logger } from '../lib/utils/logger.ts';
+import { showRecentLogs, getLogStats, getLogFilePath } from '../lib/utils/log-viewer.ts';
 
 declare const __VERSION__: string;
 const VERSION: string = typeof __VERSION__ !== 'undefined' ? __VERSION__ : '0.0.0-dev';
@@ -264,6 +265,31 @@ EXAMPLES:
 			.action(async () => {
 				await this.handleConfigShowCommand();
 			});
+
+		// Logs command
+		this.program
+			.command('logs')
+			.description('View application logs and log statistics')
+			.option('-n, --lines <number>', 'number of recent lines to show', '50')
+			.option('-s, --stats', 'show log file statistics')
+			.option('-p, --path', 'show log file path')
+			.addHelpText(
+				'after',
+				`
+EXAMPLES:
+  $ btca logs                    # Show last 50 log entries
+  $ btca logs -n 100            # Show last 100 log entries
+  $ btca logs --stats            # Show log file statistics
+  $ btca logs --path             # Show log file location
+
+For debug logs, set BTCA_DEBUG=1 environment variable:
+  $ BTCA_DEBUG=1 btca logs
+
+Log files are automatically rotated when they exceed 10MB.`
+			)
+			.action(async (options) => {
+				await this.handleLogsCommand(options);
+			});
 	}
 
 	async run(args: string[]): Promise<void> {
@@ -355,5 +381,36 @@ EXAMPLES:
 		await logger.ui(`  Provider: ${model.provider}`);
 		await logger.ui(`  Model: ${model.model}`);
 		await logger.ui(`  Repositories: ${config.repos.length}`);
+	}
+
+	private async handleLogsCommand(options: {
+		lines?: string;
+		stats?: boolean;
+		path?: boolean;
+	}): Promise<void> {
+		if (options.path) {
+			const logPath = getLogFilePath();
+			await logger.ui(`Log file location: ${logPath}`);
+			return;
+		}
+
+		if (options.stats) {
+			const stats = await getLogStats();
+			const formatSize = (bytes: number): string => {
+				if (bytes < 1024) return `${bytes}B`;
+				if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+				return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+			};
+
+			await logger.ui('Log file statistics:');
+			await logger.ui(`  Total log files: ${stats.totalFiles}`);
+			await logger.ui(`  Total size: ${formatSize(stats.totalSize)}`);
+			await logger.ui(`  Main log size: ${formatSize(stats.mainLogSize)}`);
+			return;
+		}
+
+		// Show logs by default
+		const lineCount = parseInt(options.lines || '50');
+		await showRecentLogs(lineCount);
 	}
 }

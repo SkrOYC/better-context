@@ -238,25 +238,28 @@ export class ConfigService {
 		const repoDir = path.join(this.config.reposDirectory, repo.name);
 		const branch = repo.branch ?? 'main';
 		const suppressLogs = options.suppressLogs;
+		const operationId = `git-${repoName}-${Date.now()}`;
 
 		try {
 			const exists = await directoryExists(repoDir);
 			if (exists) {
 				if (!suppressLogs) await logger.info(`Pulling latest changes for ${repo.name}...`);
-				await logger.info(
-					`Pulling latest changes for ${repo.name} from ${repo.url} (branch: ${branch})`
-				);
+				await logger.info(`[${operationId}] Pulling latest changes for ${repo.name} from ${repo.url} (branch: ${branch})`);
+				logger.startTimer(`git-pull-${operationId}`);
 				await pullRepo({ repoDir, branch });
+				await logger.endTimerWithMessage(`git-pull-${operationId}`, `Git pull completed for ${repo.name}`);
 			} else {
 				if (!suppressLogs) await logger.info(`Cloning ${repo.name}...`);
-				await logger.info(`Cloning ${repo.name} from ${repo.url} (branch: ${branch})`);
+				await logger.info(`[${operationId}] Cloning ${repo.name} from ${repo.url} (branch: ${branch})`);
+				logger.startTimer(`git-clone-${operationId}`);
 				await cloneRepo({ repoDir, url: repo.url, branch });
+				await logger.endTimerWithMessage(`git-clone-${operationId}`, `Git clone completed for ${repo.name}`);
 			}
 			if (!suppressLogs) await logger.info(`Done with ${repo.name}`);
-			await logger.info(`${repo.name} operation completed successfully`);
+			await logger.info(`[${operationId}] ${repo.name} operation completed successfully`);
 		} catch (error) {
 			await logger.error(
-				`Failed to clone/update repo ${repo.name}: ${error instanceof Error ? error.message : String(error)}`
+				`[${operationId}] Failed to clone/update repo ${repo.name}: ${error instanceof Error ? error.message : String(error)}`
 			);
 			throw error;
 		}

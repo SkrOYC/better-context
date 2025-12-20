@@ -47,8 +47,10 @@ export class OcService {
 	async askQuestion(args: { question: string; tech: string }): Promise<void> {
 		const { question, tech } = args;
 		let sessionID: string | null = null;
+		const operationId = `ask-${tech}-${Date.now()}`;
 
-		await logger.info(`Asking question about ${tech}: "${question}"`);
+		await logger.info(`[${operationId}] Starting question about ${tech}: "${question}"`);
+		logger.startTimer(`ask-${operationId}`);
 
 		// Validate tech name first and provide suggestions if not found
 		const allRepos = this.configService.getRepos();
@@ -58,15 +60,21 @@ export class OcService {
 			throw new InvalidTechError(tech, availableTechs, suggestedTechs);
 		}
 
+		await logger.info(`[${operationId}] Updating local repo for ${tech}`);
+		logger.startTimer(`repo-update-${operationId}`);
 		await this.configService.cloneOrUpdateOneRepoLocally(tech, { suppressLogs: true });
+		await logger.endTimerWithMessage(`repo-update-${operationId}`, `Repo update completed for ${tech}`);
 
 		try {
 			// Create directory-specific client using global instance
+			logger.startTimer(`client-create-${operationId}`);
 			const clientWithDirectory = await this.createDirectoryClient(tech);
+			await logger.endTimerWithMessage(`client-create-${operationId}`, `Directory client created for ${tech}`);
 
 			// Create new session
 			const repoPath = path.join(this.configService.getReposDirectory(), tech);
-			await logger.info(`Creating session for ${tech} with working directory: ${repoPath}`);
+			await logger.info(`[${operationId}] Creating session for ${tech} with working directory: ${repoPath}`);
+			logger.startTimer(`session-create-${operationId}`);
 
 			const session = await clientWithDirectory.session.create({
 				query: {
@@ -76,18 +84,24 @@ export class OcService {
 
 			if (session.error) {
 				const errorDetail = JSON.stringify(session.error, null, 2);
-				await logger.error(`Failed to start OpenCode session for ${tech}: ${errorDetail}`);
+				await logger.error(`[${operationId}] Failed to start OpenCode session for ${tech}: ${errorDetail}`);
 				throw new OcError(`FAILED TO START OPENCODE SESSION: ${errorDetail}`, session.error);
 			}
 
 			sessionID = session.data.id;
-			await logger.info(`Session created for ${tech} with ID: ${sessionID}`);
+			await logger.endTimerWithMessage(`session-create-${operationId}`, `Session created for ${tech} with ID: ${sessionID}`);
 
 			// Get the event stream
+			await logger.info(`[${operationId}] Subscribing to event stream for session ${sessionID}`);
+			logger.startTimer(`event-stream-${operationId}`);
 			const eventsSubscription = await clientWithDirectory.event.subscribe({});
+			await logger.endTimerWithMessage(`event-stream-${operationId}`, `Event stream subscribed for session ${sessionID}`);
+			
 			const writtenLengths = new Map<string, number>();
 
 			// Send prompt, but don't await promise here. Process events concurrently.
+			await logger.info(`[${operationId}] Sending prompt to session ${sessionID}`);
+			logger.startTimer(`prompt-${operationId}`);
 			const promptPromise = clientWithDirectory.session.prompt({
 				path: { id: sessionID },
 				body: {
@@ -185,6 +199,7 @@ export class OcService {
 			}
 
 			// Now, await prompt promise to catch any errors during its submission.
+			await logger.endTimerWithMessage(`prompt-${operationId}`, `Prompt sent to session ${sessionID}`);
 			const promptResponse = await promptPromise;
 			if (promptResponse.error) {
 				throw new OcError('Prompt failed', promptResponse.error);
@@ -192,9 +207,10 @@ export class OcService {
 
 			// Ensure we end with a newline
 			await logger.write('\n');
+			await logger.endTimerWithMessage(`ask-${operationId}`, `Question answered successfully for ${tech}`);
 		} catch (error) {
 			await logger.error(
-				`Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`
+				`[${operationId}] Error in askQuestion for ${tech}: ${error instanceof Error ? error.message : String(error)}`
 			);
 
 			// Try to abort the session if it exists
@@ -202,12 +218,14 @@ export class OcService {
 				try {
 					const clientWithDirectory = await this.createDirectoryClient(tech);
 					await clientWithDirectory.session.abort({ path: { id: sessionID } });
-					await logger.info(`Aborted session ${sessionID} due to error`);
+					await logger.info(`[${operationId}] Aborted session ${sessionID} due to error`);
 				} catch (abortError) {
-					await logger.warn(`Failed to abort session ${sessionID}: ${abortError}`);
+					await logger.warn(`[${operationId}] Failed to abort session ${sessionID}: ${abortError}`);
 				}
 			}
 
+			// End the timer even on error
+			await logger.endTimerWithMessage(`ask-${operationId}`, `Question failed for ${tech}`);
 			throw error;
 		}
 	}

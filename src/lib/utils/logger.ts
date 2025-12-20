@@ -6,19 +6,88 @@ export type LogLevel = 'INFO' | 'ERROR' | 'WARN' | 'DEBUG' | 'LOG';
 
 export class Logger {
 	private logFilePath: string;
-
 	private logDir: string;
+	private maxLogFiles = 5;
+	private maxLogSize = 10 * 1024 * 1024; // 10MB
+	private timers: Map<string, number> = new Map();
 
 	constructor() {
 		this.logDir = expandHome('~/.config/btca');
-
 		this.logFilePath = path.join(this.logDir, 'btca.log');
+	}
+
+	/**
+	 * Start a timer for the given operation
+	 */
+	startTimer(operation: string): void {
+		this.timers.set(operation, Date.now());
+	}
+
+	/**
+	 * End a timer and log the duration
+	 */
+	async endTimer(operation: string): Promise<void> {
+		const startTime = this.timers.get(operation);
+		if (startTime) {
+			const duration = Date.now() - startTime;
+			await this.info(`${operation} completed in ${duration}ms`);
+			this.timers.delete(operation);
+		}
+	}
+
+	/**
+	 * End a timer and log the duration with a custom message
+	 */
+	async endTimerWithMessage(operation: string, message: string): Promise<void> {
+		const startTime = this.timers.get(operation);
+		if (startTime) {
+			const duration = Date.now() - startTime;
+			await this.info(`${message} (${duration}ms)`);
+			this.timers.delete(operation);
+		}
 	}
 
 	private formatLogEntry(level: LogLevel, message: string): string {
 		const timestamp = new Date().toISOString();
-
 		return `[${timestamp}] [${level}] ${message}\n`;
+	}
+
+	private formatConsoleMessage(level: LogLevel, message: string): string {
+		const timestamp = new Date().toLocaleTimeString('en-US', { 
+			hour12: false,
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit'
+		});
+		return `[${timestamp}] ${message}`;
+	}
+
+	private async rotateLogs(): Promise<void> {
+		try {
+			// Check if current log file exceeds max size
+			const stats = await fs.stat(this.logFilePath).catch(() => null);
+			if (!stats || stats.size < this.maxLogSize) {
+				return;
+			}
+
+			// Remove oldest log file if we have too many
+			const oldestLog = path.join(this.logDir, `btca.log.${this.maxLogFiles}`);
+			await fs.unlink(oldestLog).catch(() => {}); // Ignore if file doesn't exist
+
+			// Rotate existing log files
+			for (let i = this.maxLogFiles - 1; i >= 1; i--) {
+				const currentLog = path.join(this.logDir, `btca.log.${i}`);
+				const nextLog = path.join(this.logDir, `btca.log.${i + 1}`);
+				await fs.rename(currentLog, nextLog).catch(() => {});
+			}
+
+			// Move current log to .1
+			const firstRotated = path.join(this.logDir, 'btca.log.1');
+			await fs.rename(this.logFilePath, firstRotated);
+		} catch (error) {
+			// Don't let log rotation failures break the app
+			console.error(`Log rotation failed: ${error}`);
+		}
 	}
 
 	private async ensureLogDir(): Promise<void> {
@@ -30,31 +99,42 @@ export class Logger {
 	}
 
 	async log(level: LogLevel, message: string): Promise<void> {
+		let fileWriteSuccess = false;
+		
 		try {
 			await this.ensureLogDir();
+			await this.rotateLogs();
 
 			const logEntry = this.formatLogEntry(level, message);
-
 			await fs.appendFile(this.logFilePath, logEntry);
+			fileWriteSuccess = true;
 
-			// Control console output
+			// Control console output with timestamps
+			const consoleMessage = this.formatConsoleMessage(level, message);
 
 			if (level === 'ERROR') {
-				console.error(message);
+				console.error(consoleMessage);
 			} else if (level === 'LOG') {
-				console.log(message);
+				console.log(consoleMessage);
 			} else if (level === 'WARN') {
-				console.log(`Warning: ${message}`);
+				console.log(`Warning: ${consoleMessage}`);
 			} else if (level === 'DEBUG' && process.env.BTCA_DEBUG) {
-				console.error(`[DEBUG] ${message}`);
+				console.error(`[DEBUG] ${consoleMessage}`);
+			} else if (level === 'INFO' && process.env.BTCA_DEBUG) {
+				// Show INFO logs in console when debug mode is enabled
+				console.log(`[INFO] ${consoleMessage}`);
 			}
-
-			// INFO is now file-only
 		} catch (error) {
-			// Fail silently to avoid disrupting the main application
-
-			if (process.env.BTCA_DEBUG) {
-				console.error(`Failed to write to log file: ${error}`);
+			// Always show logging errors to console, not just in debug mode
+			const errorMsg = `Failed to write to log file: ${error}`;
+			console.error(`[LOGGER ERROR] ${errorMsg}`);
+			
+			// Still try to show the original message to console
+			const consoleMessage = this.formatConsoleMessage(level, message);
+			if (level === 'ERROR') {
+				console.error(consoleMessage);
+			} else if (level === 'LOG' || level === 'WARN') {
+				console.log(consoleMessage);
 			}
 		}
 	}
